@@ -1,0 +1,54 @@
+import Link from "next/link";
+import { CalendarCheck, PackageSearch, Wallet } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+export function Hero() {
+  return (
+    <section className="mx-auto grid max-w-6xl gap-12 px-4 py-20 md:grid-cols-2 md:items-center md:py-28">
+      <div className="space-y-6">
+        <h1 className="text-4xl font-black tracking-tight text-balance md:text-5xl">
+          Tu negocio, bajo{" "}
+          <span className="font-serif font-normal italic">control</span>, sin
+          complicarte
+        </h1>
+        <p className="text-lg text-muted-foreground text-pretty">
+          Lazzo es la forma más simple de tener un negocio chico bajo
+          control. En un solo lugar: gestionás las reservas de tus clientes,
+          controlás tu stock y llevás tus finanzas del día a día — sin
+          planillas sueltas, sin cuadernos, sin perder el hilo de nada.
+        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button asChild size="lg">
+            <Link href="/login">Ya sos cliente, ingresá</Link>
+          </Button>
+        </div>
+      </div>
+
+      <div className="relative rounded-2xl bg-gradient-to-br from-primary/15 via-primary/5 to-transparent p-8 ring-1 ring-foreground/10">
+        <div className="grid gap-4">
+          <div className="flex items-center gap-3 rounded-xl bg-card p-4 shadow-sm ring-1 ring-foreground/10">
+            <CalendarCheck className="size-6 shrink-0 text-primary" />
+            <div>
+              <p className="text-sm font-bold">Reservas de hoy</p>
+              <p className="text-sm text-muted-foreground">12 turnos confirmados</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 rounded-xl bg-card p-4 shadow-sm ring-1 ring-foreground/10">
+            <PackageSearch className="size-6 shrink-0 text-primary" />
+            <div>
+              <p className="text-sm font-bold">Stock</p>
+              <p className="text-sm text-muted-foreground">3 productos por agotarse</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 rounded-xl bg-card p-4 shadow-sm ring-1 ring-foreground/10">
+            <Wallet className="size-6 shrink-0 text-primary" />
+            <div>
+              <p className="text-sm font-bold">Finanzas del día</p>
+              <p className="text-sm text-muted-foreground">Balance actualizado al instante</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
