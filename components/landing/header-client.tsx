@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Menu } from "lucide-react";
+import { Menu, Moon, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
 import { Logo } from "@/components/landing/logo";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -25,19 +26,76 @@ const navLinks = [
   { href: "#footer", label: "Contacto" },
 ];
 
+function ThemeToggleMenuItem() {
+  const { resolvedTheme, setTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+
+  return (
+    <DropdownMenuItem
+      onSelect={(event) => {
+        event.preventDefault();
+        setTheme(isDark ? "light" : "dark");
+      }}
+    >
+      {isDark ? <Sun /> : <Moon />}
+      Modo oscuro
+    </DropdownMenuItem>
+  );
+}
+
+function ThemeToggleMobileItem() {
+  const { resolvedTheme, setTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+
+  return (
+    <button
+      type="button"
+      onClick={() => setTheme(isDark ? "light" : "dark")}
+      className="flex items-center gap-2 text-left"
+    >
+      {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}
+      Modo oscuro
+    </button>
+  );
+}
+
 export function HeaderClient({ email }: { email: string | null }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur">
+    <header
+      className="lazzo-glass lazzo-glass-header sticky top-0 z-40"
+      style={{
+        backdropFilter: "var(--lazzo-glass-filter)",
+        WebkitBackdropFilter: "var(--lazzo-glass-filter)",
+      }}
+    >
+      <svg className="absolute size-0" aria-hidden="true">
+        <filter id="lazzo-glass" x="-20%" y="-20%" width="140%" height="140%">
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.008 0.02"
+            numOctaves="2"
+            seed="7"
+            result="noise"
+          />
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="noise"
+            scale="30"
+            xChannelSelector="R"
+            yChannelSelector="G"
+          />
+        </filter>
+      </svg>
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
         <Link href="/">
           <Logo />
         </Link>
 
-        <nav className="hidden items-center gap-6 text-sm text-muted-foreground md:flex">
+        <nav className="hidden items-center gap-6 text-sm text-(--landing-foreground-muted) md:flex">
           {navLinks.map((link) => (
-            <a key={link.href} href={link.href} className="hover:text-foreground">
+            <a key={link.href} href={link.href} className="hover:text-(--landing-foreground)">
               {link.label}
             </a>
           ))}
@@ -59,6 +117,7 @@ export function HeaderClient({ email }: { email: string | null }) {
                 <DropdownMenuItem asChild>
                   <Link href="/account/change-password">Cambiar contraseña</Link>
                 </DropdownMenuItem>
+                <ThemeToggleMenuItem />
                 <DropdownMenuItem asChild variant="destructive">
                   <Link href="/logout">Cerrar sesión</Link>
                 </DropdownMenuItem>
@@ -100,6 +159,7 @@ export function HeaderClient({ email }: { email: string | null }) {
                   <Link href="/account/change-password" onClick={() => setMobileOpen(false)}>
                     Cambiar contraseña
                   </Link>
+                  <ThemeToggleMobileItem />
                   <Link href="/logout" onClick={() => setMobileOpen(false)}>
                     Cerrar sesión
                   </Link>

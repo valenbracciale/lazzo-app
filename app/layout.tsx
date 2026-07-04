@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Poppins, Instrument_Serif } from "next/font/google";
+import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
 const poppins = Poppins({
@@ -30,8 +31,17 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${poppins.variable} ${instrumentSerif.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      {/* theme-locked-light: no page today (landing or auth) should react to
+          the new theme toggle yet, since there's no real dashboard for it to
+          apply to. Remove this once a dashboard route should start honoring
+          the toggle - the provider/persistence underneath are already real. */}
+      <body className="theme-locked-light min-h-full flex flex-col">
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
+          {children}
+        </ThemeProvider>
+      </body>
     </html>
   );
 }

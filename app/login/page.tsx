@@ -1,12 +1,13 @@
 import { Suspense } from "react";
+import { AuthShell } from "@/components/auth/auth-shell";
 import { LoginForm } from "./login-form";
 
 export default function LoginPage() {
   return (
-    <div className="flex flex-1 items-center justify-center px-4 py-16">
+    <AuthShell>
       <Suspense>
         <LoginForm />
       </Suspense>
-    </div>
+    </AuthShell>
   );
 }

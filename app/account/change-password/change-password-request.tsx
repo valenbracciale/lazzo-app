@@ -1,9 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { Logo } from "@/components/landing/logo";
 import { Button } from "@/components/ui/button";
 
 export function ChangePasswordRequest({ email }: { email: string }) {
@@ -32,11 +30,6 @@ export function ChangePasswordRequest({ email }: { email: string }) {
 
   return (
     <div className="w-full max-w-sm space-y-6 text-center">
-      <div className="flex justify-center">
-        <Link href="/">
-          <Logo />
-        </Link>
-      </div>
       <div className="space-y-1">
         <h1 className="text-2xl font-black tracking-tight">
           Cambiar contraseña

@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { Logo } from "@/components/landing/logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,11 +41,6 @@ export function LoginForm() {
 
   return (
     <div className="w-full max-w-sm space-y-6">
-      <div className="flex justify-center">
-        <Link href="/">
-          <Logo />
-        </Link>
-      </div>
       <div className="space-y-1 text-center">
         <h1 className="text-2xl font-black tracking-tight">
           Iniciar sesión

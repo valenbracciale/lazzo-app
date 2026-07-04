@@ -57,7 +57,7 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: #a84c30;
+  --primary: #c1351a;
   --primary-foreground: #ffffff;
   --secondary: color-mix(in oklch, #d3d3d3 45%, white);
   --secondary-foreground: oklch(0.205 0 0);
@@ -68,8 +68,10 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: color-mix(in oklch, #d3d3d3 60%, white);
   --input: color-mix(in oklch, #d3d3d3 60%, white);
-  --ring: #a84c30;
+  --ring: #c1351a;
   --brand-tertiary: #c29e93;
+  --landing-foreground: #d3d3d3;
+  --landing-foreground-muted: color-mix(in oklch, #d3d3d3 70%, transparent);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -119,6 +121,118 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+}
+
+/* Locks the current light-mode token values onto a subtree regardless of an
+   ancestor .dark class. Used on the existing auth pages so the new theme
+   toggle mechanism has zero visible effect until a real dashboard opts in. */
+.theme-locked-light {
+  color-scheme: light;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: #c1351a;
+  --primary-foreground: #ffffff;
+  --secondary: color-mix(in oklch, #d3d3d3 45%, white);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: color-mix(in oklch, #d3d3d3 35%, white);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: color-mix(in oklch, #b16651 20%, white);
+  --accent-foreground: oklch(0.205 0 0);
+  --border: color-mix(in oklch, #d3d3d3 60%, white);
+  --input: color-mix(in oklch, #d3d3d3 60%, white);
+  --ring: #c1351a;
+}
+
+/* Fixed brand aesthetic for the public landing page only - intentionally
+   independent of light/dark mode, so it never reacts to the theme toggle. */
+.landing {
+  position: relative;
+  isolation: isolate;
+  /* Darkened from the raw brand #e09d90 - the flat hex alone got pale enough
+     in spots (mixed with light blobs below) to break #d3d3d3 text contrast. */
+  background-color: color-mix(in oklch, #e09d90 82%, black 18%);
+  /* background-attachment: fixed makes percentage positions resolve against
+     the *viewport*, not the (very tall, multi-section) element box - so blobs
+     can sit at real mid-page coordinates (30% 70%, 50% 40%, etc.) without a
+     fractional Y landing somewhere unpredictable far down a long page, which
+     is what forced an earlier, corners-only version that read as a flat
+     top-to-bottom gradient instead of a mesh. */
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  /* Two-color palette only: terracota (#a84c30, slightly lightened) and a
+     light, muted fuchsia (#d98fae) - no white/gray transitions anywhere, so
+     #d3d3d3 text keeps contrast everywhere on the mesh. The lightest blob
+     (fuchsia) sits behind the hero's text/button column (top-left) so
+     "control" and the CTA read against a naturally lighter patch - no glow
+     needed. */
+  background-image:
+    radial-gradient(circle at 25% 35%, color-mix(in oklch, #d98fae 70%, transparent), transparent 38%),
+    radial-gradient(circle at 82% 12%, color-mix(in oklch, #d98fae 45%, transparent), transparent 34%),
+    radial-gradient(circle at 28% 66%, color-mix(in oklch, #a84c30 60%, white 15%), transparent 32%),
+    radial-gradient(circle at 92% 78%, color-mix(in oklch, #a84c30 65%, white 15%), transparent 32%),
+    radial-gradient(circle at 55% 42%, color-mix(in oklch, #a84c30 45%, white 15%), transparent 36%),
+    radial-gradient(circle at 12% 90%, color-mix(in oklch, #a84c30 52%, white 15%), transparent 28%);
+}
+
+.landing::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.09;
+  mix-blend-mode: overlay;
+  background-repeat: repeat;
+  background-size: 140px 140px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 19 -9'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Lift the scrollable content above the grain ::before (z-index 0) without
+   touching the header - it's already positioned via the "sticky" utility,
+   which (being a layered Tailwind rule) would otherwise lose to this
+   selector if it also matched <header>, since unlayered CSS always beats
+   @layer-wrapped utilities regardless of source order. */
+.landing > main,
+.landing > footer {
+  position: relative;
+  z-index: 1;
+}
+
+/* Liquid-glass surfaces (header + the Hero panel) - fully translucent, no
+   blur at all: only the feDisplacementMap lens-distortion filter, applied via
+   backdrop-filter, so the mesh behind reads crisp/sharp, just "curved". */
+.lazzo-glass {
+  /* --lazzo-glass-filter is consumed via an inline style on the element
+     itself (see header-client.tsx / hero.tsx) - the CSS build pipeline
+     (lightningcss) silently drops the plain `backdrop-filter` declaration if
+     it's written directly in a stylesheet rule, so the property assignment
+     happens inline instead, while the value itself stays data-driven here. */
+  --lazzo-glass-filter: none;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+@supports (backdrop-filter: url(#lazzo-glass)) {
+  .lazzo-glass {
+    --lazzo-glass-filter: url(#lazzo-glass);
+  }
+}
+
+.lazzo-glass-header {
+  /* A bit more tint than the base .lazzo-glass (0.05) - just enough to
+     separate the terracotta logo/button from the mesh behind, without
+     losing the transparent/glass feel. */
+  background-color: rgba(255, 255, 255, 0.15);
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.lazzo-glass-panel {
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
 @layer base {
