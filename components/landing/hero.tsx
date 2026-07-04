@@ -1,8 +1,13 @@
 import Link from "next/link";
 import { CalendarCheck, PackageSearch, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { createClient } from "@/lib/supabase/server";
 
-export function Hero() {
+export async function Hero() {
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getClaims();
+  const isLoggedIn = !!data?.claims;
+
   return (
     <section className="mx-auto grid max-w-6xl gap-12 px-4 py-20 md:grid-cols-2 md:items-center md:py-28">
       <div className="space-y-6">
@@ -19,7 +24,9 @@ export function Hero() {
         </p>
         <div className="flex flex-wrap items-center gap-3">
           <Button asChild size="lg">
-            <Link href="/login">Ya sos cliente, ingresá</Link>
+            <Link href={isLoggedIn ? "/dashboard" : "/login"}>
+              {isLoggedIn ? "Ir a mi panel" : "Ya sos cliente, ingresá"}
+            </Link>
           </Button>
         </div>
       </div>

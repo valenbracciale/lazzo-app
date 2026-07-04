@@ -36,6 +36,9 @@ export function DashboardHeader({
           <DropdownMenuItem asChild>
             <Link href="/account/change-password">Cambiar contraseña</Link>
           </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/">Salir de mi panel</Link>
+          </DropdownMenuItem>
           <DropdownMenuItem asChild variant="destructive">
             <Link href="/logout">Cerrar sesión</Link>
           </DropdownMenuItem>

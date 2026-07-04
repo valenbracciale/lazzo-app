@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Menu, Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Logo } from "@/components/landing/logo";
+import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -60,7 +62,21 @@ function ThemeToggleMobileItem() {
 }
 
 export function HeaderClient({ email }: { email: string | null }) {
+  const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Signing out via a plain <Link href="/logout"> only refreshes the header
+  // when it lands on a *different* route (e.g. from the dashboard). Staying
+  // on the same route (already on "/") doesn't force a re-render, so the
+  // stale logged-in header/CTA would linger until a manual reload. Doing the
+  // sign-out client-side and explicitly calling router.refresh() re-fetches
+  // this route's Server Components (Header, Hero) regardless of which page
+  // triggered it.
+  async function handleLogout() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.refresh();
+  }
 
   return (
     <header
@@ -125,8 +141,8 @@ export function HeaderClient({ email }: { email: string | null }) {
                     <Link href="/account/change-email">Cambiar email</Link>
                   </DropdownMenuItem>
                   <ThemeToggleMenuItem />
-                  <DropdownMenuItem asChild variant="destructive">
-                    <Link href="/logout">Cerrar sesión</Link>
+                  <DropdownMenuItem variant="destructive" onSelect={handleLogout}>
+                    Cerrar sesión
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -174,9 +190,16 @@ export function HeaderClient({ email }: { email: string | null }) {
                     Cambiar email
                   </Link>
                   <ThemeToggleMobileItem />
-                  <Link href="/logout" onClick={() => setMobileOpen(false)}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileOpen(false);
+                      handleLogout();
+                    }}
+                    className="text-left"
+                  >
                     Cerrar sesión
-                  </Link>
+                  </button>
                 </>
               ) : (
                 <Button asChild onClick={() => setMobileOpen(false)}>
