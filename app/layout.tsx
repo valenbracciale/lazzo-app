@@ -33,10 +33,11 @@ export default function RootLayout({
       className={`${poppins.variable} ${instrumentSerif.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      {/* theme-locked-light: no page today (landing or auth) should react to
-          the new theme toggle yet, since there's no real dashboard for it to
-          apply to. Remove this once a dashboard route should start honoring
-          the toggle - the provider/persistence underneath are already real. */}
+      {/* theme-locked-light by default: body's own `bg-background` (globals.css)
+          is an ancestor of every page, so locking only a child wrapper still
+          lets the true --background leak through at body's own edges. The
+          dashboard is the one subtree that should react to the toggle - it
+          removes this class itself (see UnlockTheme) while mounted. */}
       <body className="theme-locked-light min-h-full flex flex-col">
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
           {children}

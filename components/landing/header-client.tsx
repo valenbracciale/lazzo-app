@@ -101,31 +101,36 @@ export function HeaderClient({ email }: { email: string | null }) {
           ))}
         </nav>
 
-        <div className="hidden items-center md:flex">
+        <div className="hidden items-center gap-3 md:flex">
           {email ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="outline-none">
-                  <Avatar>
-                    <AvatarFallback>
-                      {email.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem asChild>
-                  <Link href="/account/change-password">Cambiar contraseña</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/account/change-email">Cambiar email</Link>
-                </DropdownMenuItem>
-                <ThemeToggleMenuItem />
-                <DropdownMenuItem asChild variant="destructive">
-                  <Link href="/logout">Cerrar sesión</Link>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <>
+              <Button asChild variant="secondary" size="sm">
+                <Link href="/dashboard">Ir a mi panel</Link>
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="outline-none">
+                    <Avatar>
+                      <AvatarFallback>
+                        {email.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem asChild>
+                    <Link href="/account/change-password">Cambiar contraseña</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/account/change-email">Cambiar email</Link>
+                  </DropdownMenuItem>
+                  <ThemeToggleMenuItem />
+                  <DropdownMenuItem asChild variant="destructive">
+                    <Link href="/logout">Cerrar sesión</Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
           ) : (
             <Button asChild>
               <Link href="/login">Iniciar sesión</Link>
@@ -159,6 +164,9 @@ export function HeaderClient({ email }: { email: string | null }) {
               ))}
               {email ? (
                 <>
+                  <Button asChild onClick={() => setMobileOpen(false)}>
+                    <Link href="/dashboard">Ir a mi panel</Link>
+                  </Button>
                   <Link href="/account/change-password" onClick={() => setMobileOpen(false)}>
                     Cambiar contraseña
                   </Link>
