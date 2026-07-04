@@ -117,6 +117,9 @@ export function HeaderClient({ email }: { email: string | null }) {
                 <DropdownMenuItem asChild>
                   <Link href="/account/change-password">Cambiar contraseña</Link>
                 </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/account/change-email">Cambiar email</Link>
+                </DropdownMenuItem>
                 <ThemeToggleMenuItem />
                 <DropdownMenuItem asChild variant="destructive">
                   <Link href="/logout">Cerrar sesión</Link>
@@ -158,6 +161,9 @@ export function HeaderClient({ email }: { email: string | null }) {
                 <>
                   <Link href="/account/change-password" onClick={() => setMobileOpen(false)}>
                     Cambiar contraseña
+                  </Link>
+                  <Link href="/account/change-email" onClick={() => setMobileOpen(false)}>
+                    Cambiar email
                   </Link>
                   <ThemeToggleMobileItem />
                   <Link href="/logout" onClick={() => setMobileOpen(false)}>
