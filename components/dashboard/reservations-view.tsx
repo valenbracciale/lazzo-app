@@ -31,7 +31,7 @@ import {
   type Reservation,
   type Resource,
 } from "@/components/dashboard/reservation-form";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, Plus } from "lucide-react";
 
 const statusLabel: Record<Reservation["status"], string> = {
   confirmed: "Confirmada",
@@ -142,7 +142,7 @@ export function ReservationsView({
   const isToday = selectedDate === toLocalDateInputValue(new Date());
 
   return (
-    <div className="space-y-4">
+    <div className="duration-300 animate-in fade-in-0 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Button
@@ -199,7 +199,10 @@ export function ReservationsView({
           {loading ? (
             <TableRow>
               <TableCell colSpan={5} className="text-center text-muted-foreground">
-                Cargando...
+                <span className="inline-flex items-center gap-2">
+                  <Loader2 className="size-4 animate-spin" />
+                  Cargando...
+                </span>
               </TableCell>
             </TableRow>
           ) : reservations.length === 0 ? (
@@ -212,7 +215,7 @@ export function ReservationsView({
             reservations.map((reservation) => (
               <TableRow
                 key={reservation.id}
-                className="cursor-pointer"
+                className="cursor-pointer duration-300 animate-in fade-in-0"
                 onClick={() => openEdit(reservation)}
               >
                 <TableCell>

@@ -1,10 +1,12 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import type { BusinessType } from "@/lib/business-types";
 
 export type CurrentBusiness = {
   id: string;
   name: string;
   ownerEmail: string;
+  businessType: BusinessType | null;
 };
 
 export async function getCurrentBusiness(): Promise<CurrentBusiness> {
@@ -19,7 +21,7 @@ export async function getCurrentBusiness(): Promise<CurrentBusiness> {
 
   const { data: business } = await supabase
     .from("businesses")
-    .select("id, name")
+    .select("id, name, business_type")
     .eq("owner_id", userId)
     .limit(1)
     .maybeSingle();
@@ -28,5 +30,10 @@ export async function getCurrentBusiness(): Promise<CurrentBusiness> {
     redirect("/login");
   }
 
-  return { ...business, ownerEmail: email };
+  return {
+    id: business.id,
+    name: business.name,
+    businessType: business.business_type as BusinessType | null,
+    ownerEmail: email,
+  };
 }

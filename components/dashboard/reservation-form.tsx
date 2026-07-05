@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DialogFooter } from "@/components/ui/dialog";
+import { Loader2 } from "lucide-react";
 
 export type Resource = { id: string; name: string };
 
@@ -213,6 +214,7 @@ export function ReservationForm({
 
       <DialogFooter>
         <Button type="submit" disabled={loading}>
+          {loading && <Loader2 className="animate-spin" />}
           {loading ? "Guardando..." : isEdit ? "Guardar cambios" : "Crear reserva"}
         </Button>
       </DialogFooter>

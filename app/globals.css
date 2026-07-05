@@ -2,7 +2,13 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@custom-variant dark (&:is(.dark *));
+/* The dark: variant is scoped so it can never fire on anything under
+   .theme-locked-light (the public landing/auth pages) - it's not enough to
+   only re-pin CSS variables there (see .theme-locked-light below), since
+   Tailwind's dark: utilities match purely on ".dark" ancestry (usually
+   <html>) and would otherwise bypass that lock entirely for any dark:
+   utility used by a shared component, current or future. */
+@custom-variant dark (&:is(.dark *):not(.theme-locked-light, .theme-locked-light *));
 
 @theme inline {
   --color-background: var(--background);
@@ -142,9 +148,18 @@
   --muted-foreground: oklch(0.556 0 0);
   --accent: color-mix(in oklch, #b16651 20%, white);
   --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
   --border: color-mix(in oklch, #d3d3d3 60%, white);
   --input: color-mix(in oklch, #d3d3d3 60%, white);
   --ring: #c1351a;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
 }
 
 /* Fixed brand aesthetic for the public landing page only - intentionally

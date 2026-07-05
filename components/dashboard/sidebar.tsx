@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, Package, Wallet } from "lucide-react";
+import { CalendarDays, Package, Settings, Wallet } from "lucide-react";
 import { Logo } from "@/components/landing/logo";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -20,6 +20,7 @@ const navItems = [
   { href: "/dashboard/reservations", label: "Reservas", icon: CalendarDays },
   { href: null, label: "Stock", icon: Package },
   { href: null, label: "Finanzas", icon: Wallet },
+  { href: "/dashboard/settings", label: "Configuración", icon: Settings },
 ];
 
 export function DashboardSidebar() {

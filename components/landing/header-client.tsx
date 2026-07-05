@@ -7,6 +7,7 @@ import { Menu, Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Logo } from "@/components/landing/logo";
 import { createClient } from "@/lib/supabase/client";
+import { ThemeToggleMenuItem } from "@/components/theme-toggle-menu-item";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -27,23 +28,6 @@ const navLinks = [
   { href: "#features", label: "Funciones" },
   { href: "#footer", label: "Contacto" },
 ];
-
-function ThemeToggleMenuItem() {
-  const { resolvedTheme, setTheme } = useTheme();
-  const isDark = resolvedTheme === "dark";
-
-  return (
-    <DropdownMenuItem
-      onSelect={(event) => {
-        event.preventDefault();
-        setTheme(isDark ? "light" : "dark");
-      }}
-    >
-      {isDark ? <Sun /> : <Moon />}
-      Modo oscuro
-    </DropdownMenuItem>
-  );
-}
 
 function ThemeToggleMobileItem() {
   const { resolvedTheme, setTheme } = useTheme();

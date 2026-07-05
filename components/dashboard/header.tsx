@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { ThemeToggleMenuItem } from "@/components/theme-toggle-menu-item";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,6 +37,7 @@ export function DashboardHeader({
           <DropdownMenuItem asChild>
             <Link href="/account/change-password">Cambiar contraseña</Link>
           </DropdownMenuItem>
+          <ThemeToggleMenuItem />
           <DropdownMenuItem asChild>
             <Link href="/">Salir de mi panel</Link>
           </DropdownMenuItem>
