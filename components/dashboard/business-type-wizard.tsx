@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Loader2 } from "lucide-react";
+import { CalendarDays, Loader2, Package, Wallet } from "lucide-react";
 
 export function BusinessTypeWizard({
   businessId,
@@ -22,7 +22,7 @@ export function BusinessTypeWizard({
   businessId: string;
   initialStep: number;
   initialFormData: Record<string, unknown>;
-  onDone: () => void;
+  onDone: (businessType: BusinessType) => void;
 }) {
   const [step, setStep] = useState(Math.min(initialStep, 1));
   const [businessType, setBusinessType] = useState<BusinessType | null>(
@@ -94,7 +94,7 @@ export function BusinessTypeWizard({
       return;
     }
 
-    onDone();
+    onDone(businessType);
   }
 
   const selectedLabel = BUSINESS_TYPES.find((t) => t.value === businessType)?.label;
@@ -125,9 +125,20 @@ export function BusinessTypeWizard({
                 )}
               >
                 <p className="font-semibold">{type.label}</p>
-                <p className="text-sm text-muted-foreground">
-                  {type.description}
-                </p>
+                <ul className="mt-2 space-y-1.5 text-xs text-muted-foreground">
+                  <li className="flex items-start gap-1.5">
+                    <CalendarDays className="mt-0.5 size-3 shrink-0" />
+                    <span>{type.summary.reservations}</span>
+                  </li>
+                  <li className="flex items-start gap-1.5">
+                    <Package className="mt-0.5 size-3 shrink-0" />
+                    <span>{type.summary.stock}</span>
+                  </li>
+                  <li className="flex items-start gap-1.5">
+                    <Wallet className="mt-0.5 size-3 shrink-0" />
+                    <span>{type.summary.finance}</span>
+                  </li>
+                </ul>
               </button>
             ))}
           </div>

@@ -12,6 +12,16 @@ export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackError = searchParams.get("error");
+  const callbackErrorMessage =
+    callbackError === "access-revoked"
+      ? "Tu acceso a este negocio fue revocado. Contactá al dueño del negocio."
+      : callbackError === "invite-incomplete"
+      ? "Todavía no completaste tu invitación. Revisá tu email."
+      : callbackError === "invite-link-required"
+      ? "Para completar tu invitación primero tenés que confirmar tu identidad por email."
+      : callbackError
+      ? "Ocurrió un error al confirmar tu enlace. Probá iniciar sesión de nuevo."
+      : null;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -77,10 +87,9 @@ export function LoginForm() {
           />
         </div>
 
-        {(error || callbackError) && (
+        {(error || callbackErrorMessage) && (
           <p role="alert" className="text-sm text-destructive">
-            {error ??
-              "Ocurrió un error al confirmar tu enlace. Probá iniciar sesión de nuevo."}
+            {error ?? callbackErrorMessage}
           </p>
         )}
 

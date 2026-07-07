@@ -20,11 +20,23 @@ const navItems = [
   { href: "/dashboard/reservations", label: "Reservas", icon: CalendarDays },
   { href: null, label: "Stock", icon: Package },
   { href: null, label: "Finanzas", icon: Wallet },
-  { href: "/dashboard/settings", label: "Configuración", icon: Settings },
+  {
+    href: "/dashboard/settings",
+    label: "Configuración",
+    icon: Settings,
+    ownerOnly: true,
+  },
 ];
 
-export function DashboardSidebar() {
+export function DashboardSidebar({
+  role,
+}: {
+  role: "owner" | "encargado";
+}) {
   const pathname = usePathname();
+  const visibleItems = navItems.filter(
+    (item) => !item.ownerOnly || role === "owner"
+  );
 
   return (
     <Sidebar>
@@ -37,7 +49,7 @@ export function DashboardSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) => (
+              {visibleItems.map((item) => (
                 <SidebarMenuItem key={item.label}>
                   {item.href ? (
                     <SidebarMenuButton asChild isActive={pathname.startsWith(item.href)}>

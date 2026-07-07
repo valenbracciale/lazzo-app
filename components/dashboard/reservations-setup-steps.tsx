@@ -1,5 +1,5 @@
 import type { BusinessType } from "@/lib/business-types";
-import type { SectionWizardStep } from "@/components/dashboard/section-setup-gate";
+import type { SectionWizardStep } from "@/lib/section-setup";
 import {
   DialogHeader,
   DialogTitle,
