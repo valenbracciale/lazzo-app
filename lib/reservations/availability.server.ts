@@ -7,7 +7,7 @@ import type { createClient } from "@/lib/supabase/server";
 // timezone may not match Argentina at all (e.g. UTC in production) - so local
 // <-> UTC conversions here use this explicit fixed offset instead of the
 // server's own clock/timezone.
-const BUSINESS_UTC_OFFSET_MINUTES = -180;
+export const BUSINESS_UTC_OFFSET_MINUTES = -180;
 const SLOT_MINUTES = 15;
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
@@ -34,7 +34,7 @@ type OccupiedReservation = {
   effectiveEndsAt: string;
 };
 
-function parseLocalDate(localDate: string) {
+export function parseLocalDate(localDate: string) {
   const [year, month, day] = localDate.split("-").map(Number);
   return { year, month, day };
 }
@@ -44,22 +44,22 @@ function parseHms(hms: string) {
   return { hour, minute };
 }
 
-function localToUtcMs(localDate: string, hms: string): number {
+export function localToUtcMs(localDate: string, hms: string): number {
   const { year, month, day } = parseLocalDate(localDate);
   const { hour, minute } = parseHms(hms);
   return Date.UTC(year, month - 1, day, hour, minute, 0, 0) - BUSINESS_UTC_OFFSET_MINUTES * 60_000;
 }
 
-function utcIsoToLocalMs(iso: string): number {
+export function utcIsoToLocalMs(iso: string): number {
   return new Date(iso).getTime() + BUSINESS_UTC_OFFSET_MINUTES * 60_000;
 }
 
-function getLocalDayOfWeek(localDate: string): number {
+export function getLocalDayOfWeek(localDate: string): number {
   const { year, month, day } = parseLocalDate(localDate);
   return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
 }
 
-function formatLocalHm(localMs: number): string {
+export function formatLocalHm(localMs: number): string {
   const d = new Date(localMs);
   const hours = String(d.getUTCHours()).padStart(2, "0");
   const minutes = String(d.getUTCMinutes()).padStart(2, "0");

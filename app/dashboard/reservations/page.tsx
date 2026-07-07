@@ -4,6 +4,7 @@ import { getSectionSetup } from "@/lib/section-setup.server";
 import { syncNoShows } from "@/app/dashboard/reservations/actions";
 import { ReservationsView } from "@/components/dashboard/reservations-view";
 import { RestaurantReservationsView } from "@/components/dashboard/restaurant-reservations-view";
+import { PeluqueriaReservationsView } from "@/components/dashboard/peluqueria-reservations-view";
 import { BusinessTypeGate } from "@/components/dashboard/business-type-gate";
 import { ReservationsSectionGate } from "@/components/dashboard/reservations-section-gate";
 import { SectionPendingNotice } from "@/components/dashboard/section-pending-notice";
@@ -64,6 +65,32 @@ export default async function ReservationsPage() {
         shifts={shifts ?? []}
         capacityMode={settings?.capacity_mode ?? "tables"}
         assignmentMode={settings?.assignment_mode ?? "automatic"}
+      />
+    );
+  }
+
+  if (business.businessType === "peluqueria_salon") {
+    await syncNoShows(business.id);
+
+    const [{ data: services }, { data: professionals }] = await Promise.all([
+      supabase
+        .from("services")
+        .select("id, name, duration_minutes")
+        .eq("business_id", business.id)
+        .order("name", { ascending: true }),
+      supabase
+        .from("professionals")
+        .select("id, name")
+        .eq("business_id", business.id)
+        .order("name", { ascending: true }),
+    ]);
+
+    return (
+      <PeluqueriaReservationsView
+        businessId={business.id}
+        services={services ?? []}
+        professionals={professionals ?? []}
+        isOwner={business.role === "owner"}
       />
     );
   }

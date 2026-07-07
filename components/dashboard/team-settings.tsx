@@ -23,6 +23,13 @@ import {
   TableBody,
   TableCell,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 
 export type BusinessMember = {
@@ -30,7 +37,10 @@ export type BusinessMember = {
   name: string;
   email: string;
   status: "invited" | "active" | "revoked";
+  professional_id: string | null;
 };
+
+const NO_PROFESSIONAL = "__none__";
 
 const STATUS_LABEL: Record<BusinessMember["status"], string> = {
   invited: "Invitado",
@@ -47,14 +57,26 @@ const STATUS_VARIANT: Record<
   revoked: "destructive",
 };
 
-export function TeamSettings({ members }: { members: BusinessMember[] }) {
+export function TeamSettings({
+  members,
+  professionals = [],
+}: {
+  members: BusinessMember[];
+  professionals?: { id: string; name: string }[];
+}) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [professionalId, setProfessionalId] = useState(NO_PROFESSIONAL);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
   const [revokingId, setRevokingId] = useState<string | null>(null);
+
+  const linkedProfessionalIds = new Set(
+    members.map((m) => m.professional_id).filter((id): id is string => !!id)
+  );
+  const availableProfessionals = professionals.filter((p) => !linkedProfessionalIds.has(p.id));
 
   async function handleInvite(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -62,7 +84,11 @@ export function TeamSettings({ members }: { members: BusinessMember[] }) {
     setError(null);
     setSent(false);
 
-    const result = await inviteMember({ name, email });
+    const result = await inviteMember({
+      name,
+      email,
+      professionalId: professionalId === NO_PROFESSIONAL ? null : professionalId,
+    });
 
     setLoading(false);
     if (result.error) {
@@ -73,6 +99,7 @@ export function TeamSettings({ members }: { members: BusinessMember[] }) {
     setSent(true);
     setName("");
     setEmail("");
+    setProfessionalId(NO_PROFESSIONAL);
     router.refresh();
   }
 
@@ -125,6 +152,24 @@ export function TeamSettings({ members }: { members: BusinessMember[] }) {
               }}
             />
           </div>
+          {availableProfessionals.length > 0 && (
+            <div className="space-y-1.5">
+              <Label>Vincular a profesional</Label>
+              <Select value={professionalId} onValueChange={setProfessionalId}>
+                <SelectTrigger className="w-48">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_PROFESSIONAL}>Sin vincular</SelectItem>
+                  {availableProfessionals.map((professional) => (
+                    <SelectItem key={professional.id} value={professional.id}>
+                      {professional.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <Button type="submit" disabled={loading}>
             {loading && <Loader2 className="animate-spin" />}
             {loading ? "Invitando..." : "Invitar encargado"}

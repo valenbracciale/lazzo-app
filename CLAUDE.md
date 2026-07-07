@@ -43,6 +43,38 @@ column on that same row. Do not try; split the data model instead:
   and `app/dashboard/settings/actions.ts` re-check ownership rather than
   trusting RLS alone for the invite flow.
 
+**Per-professional RLS restriction (peluquería/salón) — a stricter precedent
+than restaurant's.** Restaurant encargados see every reservation in the
+business (single shared `is_active_business_member`-based policy). Peluquería
+encargados are different: each one is linked to a specific `professionals`
+row via `business_members.professional_id`, and the `"Members can manage
+their business reservations"` policy on `reservations` is narrowed (only for
+`business_type = 'peluqueria_salon'`) so a member can only read/write rows
+whose `professional_id` matches their own. Since PostgreSQL PERMISSIVE
+policies only ever widen access when OR'd together, this restriction has to
+live *inside* that one policy's boolean expression — it cannot be layered on
+via an extra policy. If Stock/Finanzas or any future section needs a
+similar "this encargado only sees their own slice" restriction, follow this
+same shape (one shared policy, gated by business type/role inside its own
+`USING`/`WITH CHECK`), not a second permissive policy.
+
+**No-show auto-flagging runs in two layers, both must stay in sync.** A
+`pg_cron` job (`flag-reservation-no-shows`, every minute) flags any
+`confirmed` reservation with no `arrived_at` more than 15 minutes past
+`starts_at` as `no_show`, in the background regardless of whether anyone has
+a dashboard open. `syncNoShows()` (`app/dashboard/reservations/actions.ts`)
+runs the same logic scoped to one business, on every reservations page load
+and every 60s while the tab is open, so the alert appears instantly for
+whoever's looking. **The cron job's `WHERE` clause is the single place that
+decides which business types this feature applies to** — it must scope by
+`businesses.business_type in (...)`, not by the presence of a business-type-
+specific settings table (an earlier version scoped by `exists (select 1 from
+reservation_settings ...)`, which incidentally only matches restaurants and
+silently never flagged peluquería no-shows — worse, since `reservation_settings`
+has no bearing on no-show semantics at all, that scoping was accidental, not
+intentional). When a third business type adopts this feature, add it to that
+`in (...)` list.
+
 # Product roadmap notes
 
 ## Planned: public booking page (not yet implemented)

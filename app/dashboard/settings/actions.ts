@@ -8,9 +8,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 export async function inviteMember({
   name,
   email,
+  professionalId,
 }: {
   name: string;
   email: string;
+  professionalId?: string | null;
 }): Promise<{ error?: string }> {
   const business = await getCurrentBusiness();
   if (business.role !== "owner") {
@@ -56,6 +58,7 @@ export async function inviteMember({
         user_id: invited.user.id,
         name,
         email,
+        professional_id: professionalId ?? null,
         status: "invited",
         invited_by: ownerId,
         invited_at: new Date().toISOString(),
