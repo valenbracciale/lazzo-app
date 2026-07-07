@@ -38,7 +38,6 @@ export function AcceptInviteForm() {
     }
 
     router.push("/dashboard");
-    router.refresh();
   }
 
   return (
