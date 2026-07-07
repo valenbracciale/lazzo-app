@@ -4,8 +4,7 @@ import { createContext, useContext, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { BusinessTypeWizard } from "@/components/dashboard/business-type-wizard";
-import { SectionWizardRunner } from "@/components/dashboard/section-wizard-runner";
-import { getReservationsWizardSteps } from "@/components/dashboard/reservations-setup-steps";
+import { ReservationsWizard } from "@/components/dashboard/reservations-wizard";
 import type { BusinessType } from "@/lib/business-types";
 import type { SectionSetupState } from "@/lib/section-setup";
 
@@ -102,13 +101,12 @@ export function OnboardingFlow({
             />
           )}
           {current === "reservations" && businessType && (
-            <SectionWizardRunner
+            <ReservationsWizard
               businessId={businessId}
-              section="reservations"
-              steps={getReservationsWizardSteps(businessType)}
+              businessType={businessType}
               initialStep={reservationsSetup.currentStep}
               initialFormData={reservationsSetup.formData}
-              onFinish={handleReservationsDone}
+              onDone={handleReservationsDone}
             />
           )}
         </DialogContent>
