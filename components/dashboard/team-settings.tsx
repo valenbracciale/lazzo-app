@@ -60,9 +60,11 @@ const STATUS_VARIANT: Record<
 export function TeamSettings({
   members,
   professionals = [],
+  professionalLabel = "profesional",
 }: {
   members: BusinessMember[];
   professionals?: { id: string; name: string }[];
+  professionalLabel?: string;
 }) {
   const router = useRouter();
   const [name, setName] = useState("");
@@ -154,7 +156,7 @@ export function TeamSettings({
           </div>
           {availableProfessionals.length > 0 && (
             <div className="space-y-1.5">
-              <Label>Vincular a profesional</Label>
+              <Label>Vincular a {professionalLabel}</Label>
               <Select value={professionalId} onValueChange={setProfessionalId}>
                 <SelectTrigger className="w-48">
                   <SelectValue />

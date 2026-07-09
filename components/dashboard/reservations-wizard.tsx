@@ -5,6 +5,7 @@ import { SectionWizardRunner } from "@/components/dashboard/section-wizard-runne
 import { getReservationsWizardSteps } from "@/components/dashboard/reservations-setup-steps";
 import { RestaurantReservationsWizard } from "@/components/dashboard/restaurant-reservations-wizard";
 import { PeluqueriaReservationsWizard } from "@/components/dashboard/peluqueria-reservations-wizard";
+import { GimnasioReservationsWizard } from "@/components/dashboard/gimnasio-reservations-wizard";
 
 export function ReservationsWizard({
   businessId,
@@ -33,6 +34,17 @@ export function ReservationsWizard({
   if (businessType === "peluqueria_salon") {
     return (
       <PeluqueriaReservationsWizard
+        businessId={businessId}
+        initialStep={initialStep}
+        initialFormData={initialFormData}
+        onDone={onDone}
+      />
+    );
+  }
+
+  if (businessType === "gimnasio_academia") {
+    return (
+      <GimnasioReservationsWizard
         businessId={businessId}
         initialStep={initialStep}
         initialFormData={initialFormData}

@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, Package, Settings, Wallet } from "lucide-react";
+import { CalendarDays, GraduationCap, Package, Settings, Wallet } from "lucide-react";
+import type { BusinessType } from "@/lib/business-types";
 import { Logo } from "@/components/landing/logo";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -16,7 +17,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 
-const navItems = [
+const baseNavItems = [
   { href: "/dashboard/reservations", label: "Reservas", icon: CalendarDays },
   { href: null, label: "Stock", icon: Package },
   { href: null, label: "Finanzas", icon: Wallet },
@@ -30,10 +31,20 @@ const navItems = [
 
 export function DashboardSidebar({
   role,
+  businessType,
 }: {
   role: "owner" | "encargado";
+  businessType: BusinessType | null;
 }) {
   const pathname = usePathname();
+  const navItems =
+    businessType === "gimnasio_academia"
+      ? baseNavItems.map((item) =>
+          item.label === "Stock"
+            ? { ...item, href: "/dashboard/students", label: "Alumnos y Cuotas", icon: GraduationCap }
+            : item
+        )
+      : baseNavItems;
   const visibleItems = navItems.filter(
     (item) => !item.ownerOnly || role === "owner"
   );

@@ -19,7 +19,7 @@ export default async function DashboardLayout({
   return (
     <SidebarProvider>
       <UnlockTheme />
-      <DashboardSidebar role={business.role} />
+      <DashboardSidebar role={business.role} businessType={business.businessType} />
       <SidebarInset>
         <DashboardHeader businessName={business.name} email={business.email} />
         <OnboardingFlow

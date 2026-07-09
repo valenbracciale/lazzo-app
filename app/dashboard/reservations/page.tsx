@@ -5,6 +5,7 @@ import { syncNoShows } from "@/app/dashboard/reservations/actions";
 import { ReservationsView } from "@/components/dashboard/reservations-view";
 import { RestaurantReservationsView } from "@/components/dashboard/restaurant-reservations-view";
 import { PeluqueriaReservationsView } from "@/components/dashboard/peluqueria-reservations-view";
+import { GimnasioReservationsView } from "@/components/dashboard/gimnasio-reservations-view";
 import { BusinessTypeGate } from "@/components/dashboard/business-type-gate";
 import { ReservationsSectionGate } from "@/components/dashboard/reservations-section-gate";
 import { SectionPendingNotice } from "@/components/dashboard/section-pending-notice";
@@ -91,6 +92,31 @@ export default async function ReservationsPage() {
         services={services ?? []}
         professionals={professionals ?? []}
         isOwner={business.role === "owner"}
+      />
+    );
+  }
+
+  if (business.businessType === "gimnasio_academia") {
+    await syncNoShows(business.id);
+
+    let ownInstructorId: string | null = null;
+    if (business.role === "encargado") {
+      const { data: claims } = await supabase.auth.getClaims();
+      const userId = claims?.claims?.sub;
+      const { data: membership } = await supabase
+        .from("business_members")
+        .select("professional_id")
+        .eq("business_id", business.id)
+        .eq("user_id", userId)
+        .maybeSingle();
+      ownInstructorId = membership?.professional_id ?? null;
+    }
+
+    return (
+      <GimnasioReservationsView
+        businessId={business.id}
+        isOwner={business.role === "owner"}
+        ownInstructorId={ownInstructorId}
       />
     );
   }
