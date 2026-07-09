@@ -28,7 +28,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { RestaurantReservationForm } from "@/components/dashboard/restaurant-reservation-form";
-import { AlertTriangle, ChevronLeft, ChevronRight, Loader2, Plus } from "lucide-react";
+import { RestaurantRescheduleDialog } from "@/components/dashboard/restaurant-reschedule-dialog";
+import { AlertTriangle, ChevronLeft, ChevronRight, Loader2, Pencil, Plus } from "lucide-react";
 
 export type RestaurantResource = {
   id: string;
@@ -61,11 +62,12 @@ export type RestaurantReservation = {
   released_at: string | null;
   no_show_at: string | null;
   no_show_acknowledged_at: string | null;
-  status: "confirmed" | "cancelled" | "completed" | "no_show";
+  status: "confirmed" | "en_curso" | "cancelled" | "completed" | "no_show";
 };
 
 const statusLabel: Record<RestaurantReservation["status"], string> = {
   confirmed: "Confirmada",
+  en_curso: "En curso",
   cancelled: "Cancelada",
   completed: "Completada",
   no_show: "No-show",
@@ -73,9 +75,10 @@ const statusLabel: Record<RestaurantReservation["status"], string> = {
 
 const statusVariant: Record<
   RestaurantReservation["status"],
-  "default" | "secondary" | "destructive"
+  "default" | "secondary" | "destructive" | "outline"
 > = {
   confirmed: "default",
+  en_curso: "outline",
   cancelled: "destructive",
   completed: "secondary",
   no_show: "destructive",
@@ -130,6 +133,7 @@ export function RestaurantReservationsView({
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [noShows, setNoShows] = useState<RestaurantReservation[]>([]);
+  const [rescheduling, setRescheduling] = useState<RestaurantReservation | null>(null);
 
   async function loadReservations(localDate: string) {
     setLoading(true);
@@ -226,7 +230,10 @@ export function RestaurantReservationsView({
 
   async function markArrived(id: string) {
     const supabase = createClient();
-    await supabase.from("reservations").update({ arrived_at: new Date().toISOString() }).eq("id", id);
+    await supabase
+      .from("reservations")
+      .update({ arrived_at: new Date().toISOString(), status: "en_curso" })
+      .eq("id", id);
     refetchAll();
   }
 
@@ -256,7 +263,7 @@ export function RestaurantReservationsView({
   const occupiedCovers = activeShift
     ? reservations
         .filter((r) => {
-          if (r.status !== "confirmed") return false;
+          if (r.status !== "confirmed" && r.status !== "en_curso") return false;
           const now = new Date();
           const start = new Date(r.starts_at);
           const end = new Date(r.released_at ?? r.ends_at ?? r.starts_at);
@@ -375,18 +382,25 @@ export function RestaurantReservationsView({
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  {reservation.status === "confirmed" && isToday && (
-                    <div className="flex gap-2">
-                      {!reservation.arrived_at && (
-                        <Button size="sm" variant="outline" onClick={() => markArrived(reservation.id)}>
-                          Marcar llegada
+                  <div className="flex gap-2">
+                    {(reservation.status === "confirmed" || reservation.status === "en_curso") && isToday && (
+                      <>
+                        {reservation.status === "confirmed" && !reservation.arrived_at && (
+                          <Button size="sm" variant="outline" onClick={() => markArrived(reservation.id)}>
+                            Marcar llegada
+                          </Button>
+                        )}
+                        <Button size="sm" variant="outline" onClick={() => releaseResource(reservation.id)}>
+                          Liberar mesa
                         </Button>
-                      )}
-                      <Button size="sm" variant="outline" onClick={() => releaseResource(reservation.id)}>
-                        Liberar mesa
+                      </>
+                    )}
+                    {(reservation.status === "confirmed" || reservation.status === "en_curso") && (
+                      <Button size="sm" variant="ghost" onClick={() => setRescheduling(reservation)}>
+                        <Pencil /> Editar horario
                       </Button>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             ))
@@ -407,6 +421,18 @@ export function RestaurantReservationsView({
           />
         </DialogContent>
       </Dialog>
+
+      {rescheduling && (
+        <RestaurantRescheduleDialog
+          reservation={rescheduling}
+          assignmentMode={assignmentMode}
+          onClose={() => setRescheduling(null)}
+          onSaved={() => {
+            setRescheduling(null);
+            refetchAll();
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -1,9 +1,11 @@
 "use server";
 
+import { randomBytes } from "node:crypto";
 import { headers } from "next/headers";
 import { getCurrentBusiness } from "@/lib/business";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { sendBusinessTypeChangeEmail } from "@/lib/email/resend.server";
 
 export async function inviteMember({
   name,
@@ -68,6 +70,56 @@ export async function inviteMember({
 
   if (upsertError) {
     return { error: "No pudimos guardar la invitación. Probá de nuevo." };
+  }
+
+  return {};
+}
+
+export async function requestBusinessTypeChange(): Promise<{ error?: string }> {
+  const business = await getCurrentBusiness();
+  if (business.role !== "owner") {
+    return { error: "No tenés permiso para cambiar el tipo de negocio." };
+  }
+  if (!business.businessType) {
+    return { error: "Este negocio todavía no tiene un tipo configurado." };
+  }
+
+  const supabase = await createClient();
+  const { data: claims } = await supabase.auth.getClaims();
+  const ownerId = claims?.claims?.sub;
+  if (!ownerId) {
+    return { error: "No pudimos identificar tu sesión. Volvé a intentarlo." };
+  }
+
+  const token = randomBytes(32).toString("base64url");
+
+  const { error: insertError } = await supabase
+    .from("business_type_change_requests")
+    .insert({
+      business_id: business.id,
+      requested_by: ownerId,
+      previous_business_type: business.businessType,
+      token,
+      expires_at: new Date(Date.now() + 24 * 60 * 60_000).toISOString(),
+    });
+
+  if (insertError) {
+    return { error: "No pudimos iniciar el cambio. Probá de nuevo." };
+  }
+
+  const headersList = await headers();
+  const host = headersList.get("host");
+  const protocol = host?.startsWith("localhost") ? "http" : "https";
+  const confirmUrl = `${protocol}://${host}/business-type-change-confirm/${token}`;
+
+  const { error: emailError } = await sendBusinessTypeChangeEmail({
+    to: business.email,
+    businessName: business.name,
+    confirmUrl,
+  });
+
+  if (emailError) {
+    return { error: `No pudimos enviar el email de confirmación: ${emailError}` };
   }
 
   return {};

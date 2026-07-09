@@ -39,7 +39,7 @@ type GimnasioReservation = {
   arrived_at: string | null;
   no_show_at: string | null;
   no_show_acknowledged_at: string | null;
-  status: "confirmed" | "cancelled" | "completed" | "no_show";
+  status: "confirmed" | "en_curso" | "cancelled" | "completed" | "no_show";
   students: { name: string } | null;
   professionals: { name: string } | null;
   class_instances: { class_definitions: { name: string } | null } | null;
@@ -47,6 +47,7 @@ type GimnasioReservation = {
 
 const statusLabel: Record<GimnasioReservation["status"], string> = {
   confirmed: "Confirmada",
+  en_curso: "En curso",
   cancelled: "Cancelada",
   completed: "Completada",
   no_show: "No-show",
@@ -54,9 +55,10 @@ const statusLabel: Record<GimnasioReservation["status"], string> = {
 
 const statusVariant: Record<
   GimnasioReservation["status"],
-  "default" | "secondary" | "destructive"
+  "default" | "secondary" | "destructive" | "outline"
 > = {
   confirmed: "default",
+  en_curso: "outline",
   cancelled: "destructive",
   completed: "secondary",
   no_show: "destructive",

@@ -6,6 +6,7 @@ import {
   getAvailableSlots,
   listFreeResourcesAt,
   localSlotToUtcIso,
+  type SlotAvailability,
 } from "@/lib/reservations/availability.server";
 
 type CreateRestaurantReservationInput = {
@@ -26,7 +27,7 @@ export async function fetchAvailableSlots(input: {
   localDate: string;
   partySize: number;
   zonePreference: string | null;
-}): Promise<string[]> {
+}): Promise<SlotAvailability[]> {
   const business = await getCurrentBusiness();
   const supabase = await createClient();
 
@@ -127,6 +128,62 @@ export async function createRestaurantReservation(
   return {};
 }
 
+export async function rescheduleRestaurantReservation(input: {
+  reservationId: string;
+  localDate: string;
+  time: string;
+  partySize: number;
+  zonePreference: string | null;
+  resourceId?: string | null;
+  assignmentMode: "automatic" | "manual";
+}): Promise<{ error?: string }> {
+  const business = await getCurrentBusiness();
+  const supabase = await createClient();
+  const startsAt = localSlotToUtcIso(input.localDate, input.time);
+
+  const freeResources = await listFreeResourcesAt({
+    supabase,
+    businessId: business.id,
+    startsAt,
+    partySize: input.partySize,
+    zonePreference: input.zonePreference,
+  });
+
+  let resource;
+  if (input.assignmentMode === "manual") {
+    resource = freeResources.find((r) => r.id === input.resourceId);
+  } else {
+    resource = freeResources[0];
+  }
+
+  if (!resource) {
+    return { error: NO_SLOT_ERROR };
+  }
+
+  const endsAt = new Date(
+    new Date(startsAt).getTime() + resource.duration_minutes * 60_000
+  ).toISOString();
+
+  const { error } = await supabase
+    .from("reservations")
+    .update({
+      resource_id: resource.id,
+      starts_at: startsAt,
+      ends_at: endsAt,
+    })
+    .eq("id", input.reservationId)
+    .eq("business_id", business.id);
+
+  if (error) {
+    if (error.code === "23P01") {
+      return { error: NO_SLOT_ERROR };
+    }
+    return { error: "No pudimos guardar el cambio. Probá de nuevo." };
+  }
+
+  return {};
+}
+
 export async function syncNoShows(businessId: string): Promise<{ flagged: boolean }> {
   const supabase = await createClient();
 
@@ -134,7 +191,7 @@ export async function syncNoShows(businessId: string): Promise<{ flagged: boolea
     .from("reservations")
     .update({ status: "no_show", no_show_at: new Date().toISOString() })
     .eq("business_id", businessId)
-    .eq("status", "confirmed")
+    .in("status", ["confirmed", "en_curso"])
     .is("arrived_at", null)
     .lt("starts_at", new Date(Date.now() - 15 * 60_000).toISOString())
     .select("id");

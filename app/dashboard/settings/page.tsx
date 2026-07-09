@@ -13,6 +13,7 @@ import { SettingsView } from "@/components/dashboard/settings-view";
 import { TeamSettings } from "@/components/dashboard/team-settings";
 import { MercadoPagoSettings } from "@/components/dashboard/mercadopago-settings";
 import { ReservationsEditPanel } from "@/components/dashboard/reservations-edit-panel";
+import { BusinessTypeDangerZone } from "@/components/dashboard/business-type-danger-zone";
 import { reservationsLabel } from "@/lib/business-types";
 
 export default async function SettingsPage() {
@@ -95,6 +96,7 @@ export default async function SettingsPage() {
       {mercadoPago && (
         <MercadoPagoSettings connected={mercadoPago.connected} authUrl={mercadoPago.authUrl} />
       )}
+      {business.businessType && <BusinessTypeDangerZone />}
     </div>
   );
 }

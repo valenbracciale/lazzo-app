@@ -8,7 +8,9 @@ import type { createClient } from "@/lib/supabase/server";
 // <-> UTC conversions here use this explicit fixed offset instead of the
 // server's own clock/timezone.
 export const BUSINESS_UTC_OFFSET_MINUTES = -180;
-const SLOT_MINUTES = 15;
+export const SLOT_MINUTES = 15;
+
+export type SlotAvailability = { time: string; available: boolean };
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
@@ -79,14 +81,14 @@ export function getShiftWindowsForDate(
     }));
 }
 
-function generateSlotStartsUtcMs(windows: { start: number; end: number }[]): number[] {
-  const slots: number[] = [];
+export function generateSlotStartsUtcMs(windows: { start: number; end: number }[]): number[] {
+  const slots = new Set<number>();
   for (const w of windows) {
     for (let t = w.start; t < w.end; t += SLOT_MINUTES * 60_000) {
-      slots.push(t);
+      slots.add(t);
     }
   }
-  return slots.sort((a, b) => a - b);
+  return Array.from(slots).sort((a, b) => a - b);
 }
 
 export async function listOccupiedReservations(
@@ -107,7 +109,7 @@ export async function listOccupiedReservations(
     .from("reservations")
     .select("resource_id, starts_at, ends_at, released_at")
     .eq("business_id", businessId)
-    .eq("status", "confirmed")
+    .in("status", ["confirmed", "en_curso"])
     .not("resource_id", "is", null)
     .lt("starts_at", queryEnd)
     .gte("starts_at", queryStart);
@@ -160,7 +162,7 @@ export async function getAvailableSlots({
   localDate: string;
   partySize: number;
   zonePreference?: string | null;
-}): Promise<string[]> {
+}): Promise<SlotAvailability[]> {
   const [{ data: shifts }, { data: resources }] = await Promise.all([
     supabase.from("shifts").select("id, name, days_of_week, start_time, end_time").eq("business_id", businessId),
     supabase
@@ -179,11 +181,10 @@ export async function getAvailableSlots({
   const windows = getShiftWindowsForDate((shifts ?? []) as Shift[], localDate);
   const slotStarts = generateSlotStartsUtcMs(windows);
 
-  const available = slotStarts.filter((startMs) =>
-    candidates.some((resource) => isResourceFreeAt(resource, startMs, occupied))
-  );
-
-  return available.map((startMs) => formatLocalHm(utcIsoToLocalMs(new Date(startMs).toISOString())));
+  return slotStarts.map((startMs) => ({
+    time: formatLocalHm(utcIsoToLocalMs(new Date(startMs).toISOString())),
+    available: candidates.some((resource) => isResourceFreeAt(resource, startMs, occupied)),
+  }));
 }
 
 export async function listFreeResourcesAt({

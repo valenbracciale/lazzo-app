@@ -1,8 +1,8 @@
 import { Resend } from "resend";
 
-// Waitlist confirmation emails only - no other transactional email exists in
-// this app (member invites go through Supabase Auth's own invite mechanism,
-// which requires an account and can't produce a no-login link).
+// Member invites go through Supabase Auth's own invite mechanism (requires
+// an account). Everything here is transactional email that needs a
+// no-login, click-to-confirm link instead.
 const FROM_ADDRESS = "Lazzo <notificaciones@lazzo.app>";
 
 function getClient(): Resend | null {
@@ -33,6 +33,37 @@ export async function sendWaitlistSpotEmail(input: {
       <p>Confirmá tu lugar antes de que se lo demos a otro alumno en espera:</p>
       <p><a href="${input.confirmUrl}">Confirmar mi lugar</a></p>
       <p>Este link vence en 24 horas.</p>
+    `,
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return {};
+}
+
+export async function sendBusinessTypeChangeEmail(input: {
+  to: string;
+  businessName: string;
+  confirmUrl: string;
+}): Promise<{ error?: string }> {
+  const client = getClient();
+  if (!client) {
+    return { error: "RESEND_API_KEY no está configurado." };
+  }
+
+  const { error } = await client.emails.send({
+    from: FROM_ADDRESS,
+    to: input.to,
+    subject: `Confirmá el cambio de tipo de negocio de ${input.businessName}`,
+    html: `
+      <p>Hola,</p>
+      <p>Pediste cambiar el tipo de negocio de <strong>${input.businessName}</strong>.</p>
+      <p><strong>Esta acción borra permanentemente toda la configuración y los datos operativos del tipo de negocio actual</strong> (reservas/turnos, profesionales, clases, alumnos, cuotas, etc. según corresponda) y no se puede deshacer.</p>
+      <p>Si estás seguro, confirmá desde este link:</p>
+      <p><a href="${input.confirmUrl}">Confirmar cambio de tipo de negocio</a></p>
+      <p>Si no pediste este cambio, ignorá este email - no se va a borrar nada hasta que confirmes desde el link. Este link vence en 24 horas.</p>
     `,
   });
 

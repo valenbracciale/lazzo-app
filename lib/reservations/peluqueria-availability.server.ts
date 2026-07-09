@@ -2,10 +2,12 @@ import type { createClient } from "@/lib/supabase/server";
 import {
   BUSINESS_UTC_OFFSET_MINUTES,
   formatLocalHm,
+  generateSlotStartsUtcMs,
   getLocalDayOfWeek,
   localToUtcMs,
   utcIsoToLocalMs,
   type Shift,
+  type SlotAvailability,
 } from "@/lib/reservations/availability.server";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
@@ -59,7 +61,7 @@ async function listOccupiedForProfessional(
     .from("reservations")
     .select("starts_at, ends_at, released_at")
     .eq("professional_id", professionalId)
-    .eq("status", "confirmed")
+    .in("status", ["confirmed", "en_curso"])
     .lt("starts_at", queryEnd)
     .gte("starts_at", queryStart);
 
@@ -69,34 +71,20 @@ async function listOccupiedForProfessional(
   }));
 }
 
-// No fixed grid: the only meaningful "next available" times are where a
-// shift opens, or where a previous appointment ends - exactly what the
-// product spec describes ("el próximo horario es cuando termina el turno
-// anterior").
-function candidateStartTimes(
+function isFreeAt(
+  startMs: number,
   windows: { start: number; end: number }[],
   occupied: OccupiedReservation[],
-  durationMinutes: number
-): number[] {
-  const durationMs = durationMinutes * 60_000;
-  const occupiedRanges = occupied.map((o) => ({
-    start: new Date(o.starts_at).getTime(),
-    end: new Date(o.effectiveEndsAt).getTime(),
-  }));
-
-  const anchors = new Set<number>([
-    ...windows.map((w) => w.start),
-    ...occupiedRanges.map((o) => o.end),
-  ]);
-
-  return Array.from(anchors)
-    .filter((t) => {
-      const fitsWindow = windows.some((w) => t >= w.start && t + durationMs <= w.end);
-      if (!fitsWindow) return false;
-      const overlaps = occupiedRanges.some((o) => t < o.end && o.start < t + durationMs);
-      return !overlaps;
-    })
-    .sort((a, b) => a - b);
+  durationMs: number
+): boolean {
+  const fitsWindow = windows.some((w) => startMs >= w.start && startMs + durationMs <= w.end);
+  if (!fitsWindow) return false;
+  const overlaps = occupied.some((o) => {
+    const oStart = new Date(o.starts_at).getTime();
+    const oEnd = new Date(o.effectiveEndsAt).getTime();
+    return startMs < oEnd && oStart < startMs + durationMs;
+  });
+  return !overlaps;
 }
 
 async function fetchAllShifts(supabase: Supabase, businessId: string) {
@@ -133,7 +121,7 @@ export async function getAvailableSlotsForService({
   serviceId: string;
   localDate: string;
   professionalId?: string | null;
-}): Promise<string[]> {
+}): Promise<SlotAvailability[]> {
   const { data: service } = await supabase
     .from("services")
     .select("duration_minutes")
@@ -146,28 +134,40 @@ export async function getAvailableSlotsForService({
   const professionals: Professional[] = professionalId
     ? [{ id: professionalId, name: "" }]
     : await fetchEligibleProfessionals(supabase, serviceId);
+  if (professionals.length === 0) return [];
 
-  const perProfessionalCandidates = await Promise.all(
+  const durationMs = service.duration_minutes * 60_000;
+
+  const perProfessional = await Promise.all(
     professionals.map(async (professional) => {
       const windows = shiftWindowsForDate(
         effectiveShiftsForProfessional(allShifts, professional.id),
         localDate
       );
-      if (windows.length === 0) return [];
+      if (windows.length === 0) return { windows: [] as { start: number; end: number }[], occupied: [] as OccupiedReservation[] };
       const occupied = await listOccupiedForProfessional(
         supabase,
         professional.id,
         localDate,
         service.duration_minutes
       );
-      return candidateStartTimes(windows, occupied, service.duration_minutes);
+      return { windows, occupied };
     })
   );
 
-  const union = new Set<number>(perProfessionalCandidates.flat());
-  return Array.from(union)
-    .sort((a, b) => a - b)
-    .map((ms) => formatLocalHm(utcIsoToLocalMs(new Date(ms).toISOString())));
+  // The grid domain is the union of every eligible professional's shift
+  // windows - a slot only appears at all if someone could conceivably work
+  // it; whether it's actually free is checked per-slot below.
+  const allWindows = perProfessional.flatMap((p) => p.windows);
+  if (allWindows.length === 0) return [];
+  const slotStarts = generateSlotStartsUtcMs(allWindows);
+
+  return slotStarts.map((startMs) => ({
+    time: formatLocalHm(utcIsoToLocalMs(new Date(startMs).toISOString())),
+    available: perProfessional.some(({ windows, occupied }) =>
+      isFreeAt(startMs, windows, occupied, durationMs)
+    ),
+  }));
 }
 
 export async function listFreeProfessionalsAt({

@@ -38,13 +38,14 @@ import {
   PeluqueriaReservationForm,
   type PeluqueriaService,
 } from "@/components/dashboard/peluqueria-reservation-form";
-import { AlertTriangle, ChevronLeft, ChevronRight, Loader2, Plus } from "lucide-react";
+import { PeluqueriaRescheduleDialog } from "@/components/dashboard/peluqueria-reschedule-dialog";
+import { AlertTriangle, ChevronLeft, ChevronRight, Loader2, Pencil, Plus } from "lucide-react";
 
 const ALL_PROFESSIONALS = "__all__";
 
 export type PeluqueriaProfessional = { id: string; name: string };
 
-type PeluqueriaReservation = {
+export type PeluqueriaReservation = {
   id: string;
   customer_name: string;
   customer_phone: string;
@@ -53,13 +54,16 @@ type PeluqueriaReservation = {
   arrived_at: string | null;
   no_show_at: string | null;
   no_show_acknowledged_at: string | null;
-  status: "confirmed" | "cancelled" | "completed" | "no_show";
+  status: "confirmed" | "en_curso" | "cancelled" | "completed" | "no_show";
+  service_id: string | null;
+  professional_id: string | null;
   services: { name: string } | null;
   professionals: { name: string } | null;
 };
 
 const statusLabel: Record<PeluqueriaReservation["status"], string> = {
   confirmed: "Confirmada",
+  en_curso: "En curso",
   cancelled: "Cancelada",
   completed: "Completada",
   no_show: "No-show",
@@ -67,9 +71,10 @@ const statusLabel: Record<PeluqueriaReservation["status"], string> = {
 
 const statusVariant: Record<
   PeluqueriaReservation["status"],
-  "default" | "secondary" | "destructive"
+  "default" | "secondary" | "destructive" | "outline"
 > = {
   confirmed: "default",
+  en_curso: "outline",
   cancelled: "destructive",
   completed: "secondary",
   no_show: "destructive",
@@ -105,6 +110,7 @@ export function PeluqueriaReservationsView({
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [noShows, setNoShows] = useState<PeluqueriaReservation[]>([]);
+  const [rescheduling, setRescheduling] = useState<PeluqueriaReservation | null>(null);
 
   async function loadReservations(localDate: string) {
     setLoading(true);
@@ -207,7 +213,10 @@ export function PeluqueriaReservationsView({
 
   async function markArrived(id: string) {
     const supabase = createClient();
-    await supabase.from("reservations").update({ arrived_at: new Date().toISOString() }).eq("id", id);
+    await supabase
+      .from("reservations")
+      .update({ arrived_at: new Date().toISOString(), status: "en_curso" })
+      .eq("id", id);
     refetchAll();
   }
 
@@ -338,11 +347,18 @@ export function PeluqueriaReservationsView({
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  {reservation.status === "confirmed" && isToday && !reservation.arrived_at && (
-                    <Button size="sm" variant="outline" onClick={() => markArrived(reservation.id)}>
-                      Marcar llegada
-                    </Button>
-                  )}
+                  <div className="flex gap-2">
+                    {reservation.status === "confirmed" && isToday && !reservation.arrived_at && (
+                      <Button size="sm" variant="outline" onClick={() => markArrived(reservation.id)}>
+                        Marcar llegada
+                      </Button>
+                    )}
+                    {(reservation.status === "confirmed" || reservation.status === "en_curso") && (
+                      <Button size="sm" variant="ghost" onClick={() => setRescheduling(reservation)}>
+                        <Pencil /> Editar horario
+                      </Button>
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             ))
@@ -362,6 +378,17 @@ export function PeluqueriaReservationsView({
           />
         </DialogContent>
       </Dialog>
+
+      {rescheduling && (
+        <PeluqueriaRescheduleDialog
+          reservation={rescheduling}
+          onClose={() => setRescheduling(null)}
+          onSaved={() => {
+            setRescheduling(null);
+            refetchAll();
+          }}
+        />
+      )}
     </div>
   );
 }

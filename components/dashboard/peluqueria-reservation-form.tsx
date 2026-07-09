@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { toLocalDateInputValue } from "@/lib/datetime";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
+import { TimeWheelPicker, type TimeSlot } from "@/components/dashboard/time-wheel-picker";
 import {
   createPeluqueriaReservation,
   fetchAvailableSlotsForService,
@@ -44,7 +44,7 @@ export function PeluqueriaReservationForm({
   const [professionalId, setProfessionalId] = useState(AUTO_PROFESSIONAL);
 
   const [eligibleProfessionals, setEligibleProfessionals] = useState<Professional[]>([]);
-  const [slots, setSlots] = useState<string[]>([]);
+  const [slots, setSlots] = useState<TimeSlot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
 
@@ -193,31 +193,7 @@ export function PeluqueriaReservationForm({
 
       <div className="space-y-1.5">
         <Label>Horario</Label>
-        {loadingSlots ? (
-          <p className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" /> Buscando horarios...
-          </p>
-        ) : slots.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No hay horarios disponibles para esta fecha.</p>
-        ) : (
-          <div className="flex max-h-32 flex-wrap gap-1.5 overflow-y-auto">
-            {slots.map((slot) => (
-              <button
-                key={slot}
-                type="button"
-                onClick={() => setSelectedSlot(slot)}
-                className={cn(
-                  "rounded-md border px-2.5 py-1 text-sm transition-colors",
-                  selectedSlot === slot
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border hover:bg-muted"
-                )}
-              >
-                {slot}
-              </button>
-            ))}
-          </div>
-        )}
+        <TimeWheelPicker slots={slots} value={selectedSlot} onChange={setSelectedSlot} loading={loadingSlots} />
       </div>
 
       <div className="space-y-1.5">
