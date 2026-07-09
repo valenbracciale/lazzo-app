@@ -61,10 +61,12 @@ export function TeamSettings({
   members,
   professionals = [],
   professionalLabel = "profesional",
+  sectionLabel = "Reservas",
 }: {
   members: BusinessMember[];
   professionals?: { id: string; name: string }[];
   professionalLabel?: string;
+  sectionLabel?: string;
 }) {
   const router = useRouter();
   const [name, setName] = useState("");
@@ -123,7 +125,7 @@ export function TeamSettings({
       <CardHeader>
         <CardTitle>Equipo</CardTitle>
         <CardDescription>
-          Invitá encargados para que trabajen en Reservas junto a vos.
+          Invitá encargados para que trabajen en {sectionLabel} junto a vos.
         </CardDescription>
       </CardHeader>
 

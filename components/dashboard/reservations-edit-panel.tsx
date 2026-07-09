@@ -1,25 +1,24 @@
 "use client";
 
-"use client";
-
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { reservationsLabel, type BusinessType } from "@/lib/business-types";
+import type { BusinessType } from "@/lib/business-types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ReservationsWizard } from "@/components/dashboard/reservations-wizard";
+import { Pencil } from "lucide-react";
 
-export function ReservationsSectionGate({
+export function ReservationsEditPanel({
   businessId,
   businessType,
-  initialStep,
-  initialFormData,
+  sectionLabel,
+  currentConfig,
 }: {
   businessId: string;
   businessType: BusinessType;
-  initialStep: number;
-  initialFormData: Record<string, unknown>;
+  sectionLabel: string;
+  currentConfig: Record<string, unknown>;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -31,15 +30,17 @@ export function ReservationsSectionGate({
 
   return (
     <>
-      <Card className="mx-auto max-w-md duration-300 animate-in fade-in-0">
+      <Card>
         <CardHeader>
-          <CardTitle>Todavía no configuraste {reservationsLabel(businessType)}</CardTitle>
+          <CardTitle>{sectionLabel}</CardTitle>
           <CardDescription>
-            Completá esta configuración para empezar a usar esta sección.
+            Editá horarios, capacidad y profesionales cuando lo necesites.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Button onClick={() => setOpen(true)}>Configurar</Button>
+          <Button variant="outline" onClick={() => setOpen(true)}>
+            <Pencil /> Editar configuración
+          </Button>
         </CardContent>
       </Card>
 
@@ -48,8 +49,8 @@ export function ReservationsSectionGate({
           <ReservationsWizard
             businessId={businessId}
             businessType={businessType}
-            initialStep={initialStep}
-            initialFormData={initialFormData}
+            initialStep={0}
+            initialFormData={currentConfig}
             onDone={handleFinish}
           />
         </DialogContent>

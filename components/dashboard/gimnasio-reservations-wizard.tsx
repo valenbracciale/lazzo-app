@@ -165,6 +165,13 @@ export function GimnasioReservationsWizard({
 
     setSaving(false);
     if (rpcError) {
+      if (rpcError.message?.includes("professional_linked_to_member")) {
+        const name = rpcError.message.split("professional_linked_to_member:")[1]?.trim();
+        setError(
+          `No podés eliminar a ${name || "ese profesor"} porque tiene una cuenta de encargado vinculada. Revocá esa cuenta primero desde Configuración.`
+        );
+        return;
+      }
       setError("No pudimos guardar la configuración. Probá de nuevo.");
       return;
     }
@@ -363,7 +370,7 @@ export function GimnasioReservationsWizard({
       {step === 3 && (
         <>
           <DialogHeader>
-            <DialogTitle>Confirmá la configuración de Reservas</DialogTitle>
+            <DialogTitle>Confirmá la configuración de Turnos</DialogTitle>
             <DialogDescription>
               {classes.length} clase{classes.length === 1 ? "" : "s"} ·{" "}
               {instructors.length} profesor{instructors.length === 1 ? "" : "es"}

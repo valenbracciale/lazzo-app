@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { CalendarDays, GraduationCap, Package, Settings, Wallet } from "lucide-react";
-import type { BusinessType } from "@/lib/business-types";
+import { reservationsLabel, type BusinessType } from "@/lib/business-types";
 import { Logo } from "@/components/landing/logo";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -17,17 +17,23 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 
-const baseNavItems = [
-  { href: "/dashboard/reservations", label: "Reservas", icon: CalendarDays },
-  { href: null, label: "Stock", icon: Package },
-  { href: null, label: "Finanzas", icon: Wallet },
-  {
-    href: "/dashboard/settings",
-    label: "Configuración",
-    icon: Settings,
-    ownerOnly: true,
-  },
-];
+function getBaseNavItems(businessType: BusinessType | null) {
+  return [
+    {
+      href: "/dashboard/reservations",
+      label: reservationsLabel(businessType),
+      icon: CalendarDays,
+    },
+    { href: null, label: "Stock", icon: Package },
+    { href: null, label: "Finanzas", icon: Wallet },
+    {
+      href: "/dashboard/settings",
+      label: "Configuración",
+      icon: Settings,
+      ownerOnly: true,
+    },
+  ];
+}
 
 export function DashboardSidebar({
   role,
@@ -37,6 +43,7 @@ export function DashboardSidebar({
   businessType: BusinessType | null;
 }) {
   const pathname = usePathname();
+  const baseNavItems = getBaseNavItems(businessType);
   const navItems =
     businessType === "gimnasio_academia"
       ? baseNavItems.map((item) =>

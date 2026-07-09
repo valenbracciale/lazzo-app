@@ -300,6 +300,13 @@ export function PeluqueriaReservationsWizard({
 
     setSaving(false);
     if (rpcError) {
+      if (rpcError.message?.includes("professional_linked_to_member")) {
+        const name = rpcError.message.split("professional_linked_to_member:")[1]?.trim();
+        setError(
+          `No podés eliminar a ${name || "ese profesional"} porque tiene una cuenta de encargado vinculada. Revocá esa cuenta primero desde Configuración.`
+        );
+        return;
+      }
       setError("No pudimos guardar la configuración. Probá de nuevo.");
       return;
     }
@@ -536,7 +543,7 @@ export function PeluqueriaReservationsWizard({
       {step === 4 && (
         <>
           <DialogHeader>
-            <DialogTitle>Confirmá la configuración de Reservas</DialogTitle>
+            <DialogTitle>Confirmá la configuración de Turnos</DialogTitle>
             <DialogDescription>
               {services.length} servicio{services.length === 1 ? "" : "s"} ·{" "}
               {professionals.length} profesional{professionals.length === 1 ? "" : "es"}

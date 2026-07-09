@@ -1,6 +1,7 @@
 import { getCurrentBusiness } from "@/lib/business";
 import { createClient } from "@/lib/supabase/server";
 import { getSectionSetup } from "@/lib/section-setup.server";
+import { reservationsLabel } from "@/lib/business-types";
 import { syncNoShows } from "@/app/dashboard/reservations/actions";
 import { ReservationsView } from "@/components/dashboard/reservations-view";
 import { RestaurantReservationsView } from "@/components/dashboard/restaurant-reservations-view";
@@ -25,7 +26,7 @@ export default async function ReservationsPage() {
 
   if (!setup.completed) {
     if (business.role !== "owner") {
-      return <SectionPendingNotice sectionLabel="Reservas" />;
+      return <SectionPendingNotice sectionLabel={reservationsLabel(business.businessType)} />;
     }
     return (
       <ReservationsSectionGate

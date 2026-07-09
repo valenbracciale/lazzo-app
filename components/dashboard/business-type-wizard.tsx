@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { BUSINESS_TYPES, type BusinessType } from "@/lib/business-types";
+import { BUSINESS_TYPES, reservationsLabel, type BusinessType } from "@/lib/business-types";
 import {
   DialogHeader,
   DialogTitle,
@@ -168,9 +168,9 @@ export function BusinessTypeWizard({
 
           <p className="py-4 text-sm text-muted-foreground">
             Esta elección determina cómo funciona todo Lazzo para este
-            negocio (Reservas, Stock y Finanzas). Cambiarla más adelante
-            no es trivial, así que asegurate de que sea la correcta antes
-            de confirmar.
+            negocio ({reservationsLabel(businessType)}, Stock y Finanzas).
+            Cambiarla más adelante no es trivial, así que asegurate de que
+            sea la correcta antes de confirmar.
           </p>
 
           {error && (

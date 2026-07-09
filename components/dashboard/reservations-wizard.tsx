@@ -1,8 +1,6 @@
 "use client";
 
 import type { BusinessType } from "@/lib/business-types";
-import { SectionWizardRunner } from "@/components/dashboard/section-wizard-runner";
-import { getReservationsWizardSteps } from "@/components/dashboard/reservations-setup-steps";
 import { RestaurantReservationsWizard } from "@/components/dashboard/restaurant-reservations-wizard";
 import { PeluqueriaReservationsWizard } from "@/components/dashboard/peluqueria-reservations-wizard";
 import { GimnasioReservationsWizard } from "@/components/dashboard/gimnasio-reservations-wizard";
@@ -53,14 +51,13 @@ export function ReservationsWizard({
     );
   }
 
+  // Every real business type has a bespoke wizard above. Reaching this means
+  // businessType is null or unrecognized - never silently mark the section
+  // configured without collecting real data.
   return (
-    <SectionWizardRunner
-      businessId={businessId}
-      section="reservations"
-      steps={getReservationsWizardSteps(businessType)}
-      initialStep={initialStep}
-      initialFormData={initialFormData}
-      onFinish={onDone}
-    />
+    <p className="text-sm text-destructive">
+      No pudimos determinar el tipo de negocio para configurar esta sección.
+      Volvé a intentarlo o contactá a soporte.
+    </p>
   );
 }

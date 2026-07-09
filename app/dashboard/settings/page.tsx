@@ -3,9 +3,17 @@ import { headers } from "next/headers";
 import { getCurrentBusiness } from "@/lib/business";
 import { createClient } from "@/lib/supabase/server";
 import { signState } from "@/lib/mercadopago/state.server";
+import { getSectionSetup } from "@/lib/section-setup.server";
+import {
+  getRestaurantConfigSnapshot,
+  getPeluqueriaConfigSnapshot,
+  getGimnasioConfigSnapshot,
+} from "@/lib/reservations/config-snapshot.server";
 import { SettingsView } from "@/components/dashboard/settings-view";
 import { TeamSettings } from "@/components/dashboard/team-settings";
 import { MercadoPagoSettings } from "@/components/dashboard/mercadopago-settings";
+import { ReservationsEditPanel } from "@/components/dashboard/reservations-edit-panel";
+import { reservationsLabel } from "@/lib/business-types";
 
 export default async function SettingsPage() {
   const business = await getCurrentBusiness();
@@ -53,10 +61,37 @@ export default async function SettingsPage() {
     mercadoPago = { connected: !!connection, authUrl };
   }
 
+  let reservationsConfig: Record<string, unknown> | null = null;
+  if (business.businessType) {
+    const setup = await getSectionSetup(supabase, business.id, "reservations");
+    if (setup.completed) {
+      if (business.businessType === "restaurante_bar") {
+        reservationsConfig = await getRestaurantConfigSnapshot(supabase, business.id);
+      } else if (business.businessType === "peluqueria_salon") {
+        reservationsConfig = await getPeluqueriaConfigSnapshot(supabase, business.id);
+      } else if (business.businessType === "gimnasio_academia") {
+        reservationsConfig = await getGimnasioConfigSnapshot(supabase, business.id);
+      }
+    }
+  }
+
   return (
     <div className="mx-auto max-w-xl space-y-6">
       <SettingsView businessId={business.id} businessName={business.name} />
-      <TeamSettings members={members ?? []} professionals={professionals} professionalLabel={professionalLabel} />
+      {reservationsConfig && business.businessType && (
+        <ReservationsEditPanel
+          businessId={business.id}
+          businessType={business.businessType}
+          sectionLabel={reservationsLabel(business.businessType)}
+          currentConfig={reservationsConfig}
+        />
+      )}
+      <TeamSettings
+        members={members ?? []}
+        professionals={professionals}
+        professionalLabel={professionalLabel}
+        sectionLabel={reservationsLabel(business.businessType)}
+      />
       {mercadoPago && (
         <MercadoPagoSettings connected={mercadoPago.connected} authUrl={mercadoPago.authUrl} />
       )}

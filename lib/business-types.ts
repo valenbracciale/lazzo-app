@@ -3,6 +3,14 @@ export type BusinessType =
   | "peluqueria_salon"
   | "gimnasio_academia";
 
+// "Reservas" stays as-is for restaurante_bar; peluqueria_salon and
+// gimnasio_academia call the same feature "Turnos" throughout the UI.
+export function reservationsLabel(businessType: BusinessType | null): string {
+  return businessType === "restaurante_bar" || businessType === null
+    ? "Reservas"
+    : "Turnos";
+}
+
 export type BusinessTypeSummary = {
   reservations: string;
   stock: string;
