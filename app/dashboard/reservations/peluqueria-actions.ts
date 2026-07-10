@@ -15,6 +15,7 @@ export async function fetchAvailableSlotsForService(input: {
   serviceId: string;
   localDate: string;
   professionalId?: string | null;
+  excludeReservationId?: string | null;
 }): Promise<SlotAvailability[]> {
   const business = await getCurrentBusiness();
   const supabase = await createClient();
@@ -25,6 +26,7 @@ export async function fetchAvailableSlotsForService(input: {
     serviceId: input.serviceId,
     localDate: input.localDate,
     professionalId: input.professionalId,
+    excludeReservationId: input.excludeReservationId,
   });
 }
 
@@ -74,6 +76,7 @@ export async function reschedulePeluqueriaReservation(input: {
     serviceId: input.serviceId,
     startsAt,
     durationMinutes: service.duration_minutes,
+    excludeReservationId: input.reservationId,
   });
 
   let professionalId: string | undefined;
@@ -110,7 +113,8 @@ export async function reschedulePeluqueriaReservation(input: {
       ends_at: endsAt,
     })
     .eq("id", input.reservationId)
-    .eq("business_id", business.id);
+    .eq("business_id", business.id)
+    .in("status", ["confirmed", "en_curso"]);
 
   if (error) {
     if (error.code === "23P01") {

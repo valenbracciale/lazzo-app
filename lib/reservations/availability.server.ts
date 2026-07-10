@@ -95,7 +95,8 @@ export async function listOccupiedReservations(
   supabase: Supabase,
   businessId: string,
   localDate: string,
-  maxDurationMinutes: number
+  maxDurationMinutes: number,
+  excludeReservationId?: string | null
 ): Promise<OccupiedReservation[]> {
   const dayStartMs = localToUtcMs(localDate, "00:00");
   const dayEndMs = dayStartMs + 24 * 60 * 60_000;
@@ -105,7 +106,7 @@ export async function listOccupiedReservations(
   const queryStart = new Date(dayStartMs - maxDurationMinutes * 60_000).toISOString();
   const queryEnd = new Date(dayEndMs).toISOString();
 
-  const { data } = await supabase
+  let query = supabase
     .from("reservations")
     .select("resource_id, starts_at, ends_at, released_at")
     .eq("business_id", businessId)
@@ -113,6 +114,16 @@ export async function listOccupiedReservations(
     .not("resource_id", "is", null)
     .lt("starts_at", queryEnd)
     .gte("starts_at", queryStart);
+
+  // When rescheduling an existing reservation, it must not count as its own
+  // conflict - otherwise its current slot (and any overlapping one) always
+  // shows as occupied, blocking the most common edit (nudging the same
+  // table/time by a few minutes).
+  if (excludeReservationId) {
+    query = query.neq("id", excludeReservationId);
+  }
+
+  const { data } = await query;
 
   return (data ?? [])
     .filter((r): r is typeof r & { resource_id: string } => r.resource_id !== null)
@@ -156,12 +167,14 @@ export async function getAvailableSlots({
   localDate,
   partySize,
   zonePreference,
+  excludeReservationId,
 }: {
   supabase: Supabase;
   businessId: string;
   localDate: string;
   partySize: number;
   zonePreference?: string | null;
+  excludeReservationId?: string | null;
 }): Promise<SlotAvailability[]> {
   const [{ data: shifts }, { data: resources }] = await Promise.all([
     supabase.from("shifts").select("id, name, days_of_week, start_time, end_time").eq("business_id", businessId),
@@ -176,7 +189,13 @@ export async function getAvailableSlots({
   if (candidates.length === 0) return [];
 
   const maxDuration = Math.max(...allResources.map((r) => r.duration_minutes), 0);
-  const occupied = await listOccupiedReservations(supabase, businessId, localDate, maxDuration);
+  const occupied = await listOccupiedReservations(
+    supabase,
+    businessId,
+    localDate,
+    maxDuration,
+    excludeReservationId
+  );
 
   const windows = getShiftWindowsForDate((shifts ?? []) as Shift[], localDate);
   const slotStarts = generateSlotStartsUtcMs(windows);
@@ -193,12 +212,14 @@ export async function listFreeResourcesAt({
   startsAt,
   partySize,
   zonePreference,
+  excludeReservationId,
 }: {
   supabase: Supabase;
   businessId: string;
   startsAt: string;
   partySize: number;
   zonePreference?: string | null;
+  excludeReservationId?: string | null;
 }): Promise<Resource[]> {
   const { data: resources } = await supabase
     .from("resources")
@@ -215,7 +236,13 @@ export async function listFreeResourcesAt({
     .toISOString()
     .slice(0, 10);
   const maxDuration = Math.max(...allResources.map((r) => r.duration_minutes), 0);
-  const occupied = await listOccupiedReservations(supabase, businessId, localDate, maxDuration);
+  const occupied = await listOccupiedReservations(
+    supabase,
+    businessId,
+    localDate,
+    maxDuration,
+    excludeReservationId
+  );
 
   const startMs = new Date(startsAt).getTime();
   const free = candidates.filter((resource) => isResourceFreeAt(resource, startMs, occupied));

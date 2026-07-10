@@ -66,7 +66,7 @@ export async function listClassInstancesForDate(
           .from("reservations")
           .select("class_instance_id")
           .in("class_instance_id", instanceIds)
-          .eq("status", "confirmed")
+          .in("status", ["confirmed", "en_curso"])
       : { data: [] as { class_instance_id: string | null }[] };
 
   const seatsTaken = new Map<string, number>();

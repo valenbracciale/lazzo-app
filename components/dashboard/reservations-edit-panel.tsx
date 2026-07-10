@@ -52,6 +52,7 @@ export function ReservationsEditPanel({
             initialStep={0}
             initialFormData={currentConfig}
             onDone={handleFinish}
+            isEditingCompleted
           />
         </DialogContent>
       </Dialog>

@@ -55,6 +55,7 @@ export function RestaurantRescheduleDialog({
       localDate,
       partySize: reservation.party_size,
       zonePreference: reservation.zone_preference,
+      excludeReservationId: reservation.id,
     }).then((result) => {
       if (!cancelled) {
         setSlots(result);
@@ -80,6 +81,7 @@ export function RestaurantRescheduleDialog({
       time: selectedSlot,
       partySize: reservation.party_size,
       zonePreference: reservation.zone_preference,
+      excludeReservationId: reservation.id,
     }).then((result) => {
       if (!cancelled) {
         setFreeResources(result);
@@ -115,7 +117,6 @@ export function RestaurantRescheduleDialog({
       partySize: reservation.party_size,
       zonePreference: reservation.zone_preference,
       resourceId: selectedResourceId,
-      assignmentMode,
     });
 
     setSaving(false);

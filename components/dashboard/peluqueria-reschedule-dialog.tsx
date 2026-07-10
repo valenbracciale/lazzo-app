@@ -40,6 +40,7 @@ export function PeluqueriaRescheduleDialog({
       serviceId: reservation.service_id,
       localDate,
       professionalId: reservation.professional_id,
+      excludeReservationId: reservation.id,
     }).then((result) => {
       if (!cancelled) {
         setSlots(result);

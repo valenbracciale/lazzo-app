@@ -11,12 +11,18 @@ export function ReservationsWizard({
   initialStep,
   initialFormData,
   onDone,
+  isEditingCompleted = false,
 }: {
   businessId: string;
   businessType: BusinessType | null;
   initialStep: number;
   initialFormData: Record<string, unknown>;
   onDone: () => void;
+  // True when opened from the post-setup edit panel (section already
+  // completed) rather than the first-time setup gate. Intermediate step
+  // progress must not be persisted in that case - see each wizard's
+  // persistAndAdvance for why.
+  isEditingCompleted?: boolean;
 }) {
   if (businessType === "restaurante_bar") {
     return (
@@ -25,6 +31,7 @@ export function ReservationsWizard({
         initialStep={initialStep}
         initialFormData={initialFormData}
         onDone={onDone}
+        isEditingCompleted={isEditingCompleted}
       />
     );
   }
@@ -36,6 +43,7 @@ export function ReservationsWizard({
         initialStep={initialStep}
         initialFormData={initialFormData}
         onDone={onDone}
+        isEditingCompleted={isEditingCompleted}
       />
     );
   }
@@ -47,6 +55,7 @@ export function ReservationsWizard({
         initialStep={initialStep}
         initialFormData={initialFormData}
         onDone={onDone}
+        isEditingCompleted={isEditingCompleted}
       />
     );
   }

@@ -55,6 +55,9 @@ export async function POST(request: NextRequest) {
     const feeId = payment?.external_reference;
     if (payment && feeId) {
       const admin = createAdminClient();
+      // The `sync_student_fee_after_payment` trigger on fee_payments advances
+      // the linked student_fees row (status + next_due_date) when this insert
+      // lands with status "approved".
       await admin.from("fee_payments").insert({
         business_id: businessId,
         fee_id: feeId,
@@ -64,15 +67,6 @@ export async function POST(request: NextRequest) {
         paid_at: payment.status === "approved" ? payment.date_approved : null,
         raw_webhook: payment,
       });
-
-      if (payment.status === "approved") {
-        const nextDue = new Date();
-        nextDue.setMonth(nextDue.getMonth() + 1);
-        await admin
-          .from("student_fees")
-          .update({ status: "active", next_due_date: nextDue.toISOString().slice(0, 10) })
-          .eq("id", feeId);
-      }
     }
   }
 

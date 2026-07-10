@@ -120,6 +120,10 @@ export async function recordCashPayment(input: {
   const business = await getCurrentBusiness();
   const supabase = await createClient();
 
+  // The `sync_student_fee_after_payment` trigger on fee_payments advances the
+  // linked student_fees row (status + next_due_date) for any role - this insert
+  // doesn't need to (and, for an encargado, RLS wouldn't let it) update
+  // student_fees directly.
   const { error: paymentError } = await supabase.from("fee_payments").insert({
     business_id: business.id,
     fee_id: input.feeId,
@@ -130,15 +134,6 @@ export async function recordCashPayment(input: {
 
   if (paymentError) {
     return { error: "No pudimos registrar el pago. Probá de nuevo." };
-  }
-
-  if (business.role === "owner") {
-    const nextDue = new Date();
-    nextDue.setMonth(nextDue.getMonth() + 1);
-    await supabase
-      .from("student_fees")
-      .update({ status: "active", next_due_date: nextDue.toISOString().slice(0, 10) })
-      .eq("id", input.feeId);
   }
 
   return {};

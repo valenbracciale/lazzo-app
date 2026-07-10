@@ -121,7 +121,7 @@ export function GimnasioReservationsView({
 
     const seatsTaken = new Map<string, number>();
     for (const r of reservationRows ?? []) {
-      if (r.status !== "confirmed" || !r.class_instance_id) continue;
+      if ((r.status !== "confirmed" && r.status !== "en_curso") || !r.class_instance_id) continue;
       seatsTaken.set(r.class_instance_id, (seatsTaken.get(r.class_instance_id) ?? 0) + 1);
     }
 
@@ -366,7 +366,9 @@ export function GimnasioReservationsView({
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  {reservation.status === "confirmed" && isToday && !reservation.arrived_at && (
+                  {(reservation.status === "confirmed" || reservation.status === "en_curso") &&
+                    isToday &&
+                    !reservation.arrived_at && (
                     <Button size="sm" variant="outline" onClick={() => markArrived(reservation.id)}>
                       Marcar llegada
                     </Button>

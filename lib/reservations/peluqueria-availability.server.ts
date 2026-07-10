@@ -50,20 +50,29 @@ async function listOccupiedForProfessional(
   supabase: Supabase,
   professionalId: string,
   localDate: string,
-  maxDurationMinutes: number
+  maxDurationMinutes: number,
+  excludeReservationId?: string | null
 ): Promise<OccupiedReservation[]> {
   const dayStartMs = localToUtcMs(localDate, "00:00");
   const dayEndMs = dayStartMs + 24 * 60 * 60_000;
   const queryStart = new Date(dayStartMs - maxDurationMinutes * 60_000).toISOString();
   const queryEnd = new Date(dayEndMs).toISOString();
 
-  const { data } = await supabase
+  let query = supabase
     .from("reservations")
     .select("starts_at, ends_at, released_at")
     .eq("professional_id", professionalId)
     .in("status", ["confirmed", "en_curso"])
     .lt("starts_at", queryEnd)
     .gte("starts_at", queryStart);
+
+  // When rescheduling an existing reservation, it must not count as its own
+  // conflict against the professional it's already assigned to.
+  if (excludeReservationId) {
+    query = query.neq("id", excludeReservationId);
+  }
+
+  const { data } = await query;
 
   return (data ?? []).map((r) => ({
     starts_at: r.starts_at,
@@ -115,12 +124,14 @@ export async function getAvailableSlotsForService({
   serviceId,
   localDate,
   professionalId,
+  excludeReservationId,
 }: {
   supabase: Supabase;
   businessId: string;
   serviceId: string;
   localDate: string;
   professionalId?: string | null;
+  excludeReservationId?: string | null;
 }): Promise<SlotAvailability[]> {
   const { data: service } = await supabase
     .from("services")
@@ -149,7 +160,8 @@ export async function getAvailableSlotsForService({
         supabase,
         professional.id,
         localDate,
-        service.duration_minutes
+        service.duration_minutes,
+        excludeReservationId
       );
       return { windows, occupied };
     })
@@ -175,11 +187,13 @@ export async function listFreeProfessionalsAt({
   serviceId,
   startsAt,
   durationMinutes,
+  excludeReservationId,
 }: {
   supabase: Supabase;
   serviceId: string;
   startsAt: string;
   durationMinutes: number;
+  excludeReservationId?: string | null;
 }): Promise<Professional[]> {
   const professionals = await fetchEligibleProfessionals(supabase, serviceId);
   if (professionals.length === 0) return [];
@@ -196,7 +210,8 @@ export async function listFreeProfessionalsAt({
       supabase,
       professional.id,
       localDate,
-      durationMinutes
+      durationMinutes,
+      excludeReservationId
     );
     const overlaps = occupied.some((o) => {
       const oStart = new Date(o.starts_at).getTime();

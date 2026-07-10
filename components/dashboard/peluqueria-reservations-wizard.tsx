@@ -136,11 +136,13 @@ export function PeluqueriaReservationsWizard({
   initialStep,
   initialFormData,
   onDone,
+  isEditingCompleted = false,
 }: {
   businessId: string;
   initialStep: number;
   initialFormData: Record<string, unknown>;
   onDone: () => void;
+  isEditingCompleted?: boolean;
 }) {
   const [step, setStep] = useState(Math.min(initialStep, LAST_STEP));
   const [services, setServices] = useState<ServiceRow[]>(
@@ -160,6 +162,17 @@ export function PeluqueriaReservationsWizard({
   const [error, setError] = useState<string | null>(null);
 
   async function persistAndAdvance(nextStep: number, snapshot: Record<string, unknown>) {
+    // Editing an already-completed section (from the settings edit panel)
+    // always restarts at step 0 and never resumes from saved progress, so
+    // autosaving intermediate steps here serves no purpose - and would
+    // wrongly flip `completed` back to false for a live, working section
+    // (shown as "not configured" to the owner and every encargado) the
+    // instant the user takes one step, even if they finish the edit later.
+    if (isEditingCompleted) {
+      setStep(nextStep);
+      return;
+    }
+
     setSaving(true);
     setError(null);
 
@@ -304,6 +317,20 @@ export function PeluqueriaReservationsWizard({
         const name = rpcError.message.split("professional_linked_to_member:")[1]?.trim();
         setError(
           `No podés eliminar a ${name || "ese profesional"} porque tiene una cuenta de encargado vinculada. Revocá esa cuenta primero desde Configuración.`
+        );
+        return;
+      }
+      if (rpcError.message?.includes("service_has_reservations")) {
+        const name = rpcError.message.split("service_has_reservations:")[1]?.trim();
+        setError(
+          `No podés eliminar el servicio "${name || "ese servicio"}" porque tiene turnos asociados. Dejalo en la lista si querés conservar ese historial.`
+        );
+        return;
+      }
+      if (rpcError.message?.includes("professional_has_reservations")) {
+        const name = rpcError.message.split("professional_has_reservations:")[1]?.trim();
+        setError(
+          `No podés eliminar a ${name || "ese profesional"} porque tiene turnos asociados. Dejalo en la lista si querés conservar ese historial.`
         );
         return;
       }

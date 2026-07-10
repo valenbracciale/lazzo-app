@@ -24,32 +24,45 @@ export default async function SettingsPage() {
   }
 
   const supabase = await createClient();
-  const { data: members } = await supabase
-    .from("business_members")
-    .select("id, name, email, status, professional_id")
-    .eq("business_id", business.id)
-    .order("invited_at", { ascending: true });
+  const wantsProfessionals =
+    business.businessType === "peluqueria_salon" || business.businessType === "gimnasio_academia";
+  const wantsMercadoPago = business.businessType === "gimnasio_academia";
 
-  let professionals: { id: string; name: string }[] = [];
-  if (business.businessType === "peluqueria_salon" || business.businessType === "gimnasio_academia") {
-    const { data } = await supabase
-      .from("professionals")
-      .select("id, name")
+  const [
+    { data: members },
+    { data: professionalsData },
+    { data: mpConnection },
+    setup,
+  ] = await Promise.all([
+    supabase
+      .from("business_members")
+      .select("id, name, email, status, professional_id")
       .eq("business_id", business.id)
-      .order("name", { ascending: true });
-    professionals = data ?? [];
-  }
+      .order("invited_at", { ascending: true }),
+    wantsProfessionals
+      ? supabase
+          .from("professionals")
+          .select("id, name")
+          .eq("business_id", business.id)
+          .order("name", { ascending: true })
+      : Promise.resolve({ data: [] as { id: string; name: string }[] }),
+    wantsMercadoPago
+      ? supabase
+          .from("mercadopago_connections")
+          .select("business_id")
+          .eq("business_id", business.id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    business.businessType
+      ? getSectionSetup(supabase, business.id, "reservations")
+      : Promise.resolve(null),
+  ]);
 
+  const professionals = professionalsData ?? [];
   const professionalLabel = business.businessType === "gimnasio_academia" ? "profesor" : "profesional";
 
   let mercadoPago: { connected: boolean; authUrl: string } | null = null;
-  if (business.businessType === "gimnasio_academia") {
-    const { data: connection } = await supabase
-      .from("mercadopago_connections")
-      .select("business_id")
-      .eq("business_id", business.id)
-      .maybeSingle();
-
+  if (wantsMercadoPago) {
     const headersList = await headers();
     const host = headersList.get("host");
     const protocol = host?.startsWith("localhost") ? "http" : "https";
@@ -59,20 +72,17 @@ export default async function SettingsPage() {
       `&response_type=code&platform_id=mp&redirect_uri=${encodeURIComponent(redirectUri)}` +
       `&state=${signState(business.id)}`;
 
-    mercadoPago = { connected: !!connection, authUrl };
+    mercadoPago = { connected: !!mpConnection, authUrl };
   }
 
   let reservationsConfig: Record<string, unknown> | null = null;
-  if (business.businessType) {
-    const setup = await getSectionSetup(supabase, business.id, "reservations");
-    if (setup.completed) {
-      if (business.businessType === "restaurante_bar") {
-        reservationsConfig = await getRestaurantConfigSnapshot(supabase, business.id);
-      } else if (business.businessType === "peluqueria_salon") {
-        reservationsConfig = await getPeluqueriaConfigSnapshot(supabase, business.id);
-      } else if (business.businessType === "gimnasio_academia") {
-        reservationsConfig = await getGimnasioConfigSnapshot(supabase, business.id);
-      }
+  if (business.businessType && setup?.completed) {
+    if (business.businessType === "restaurante_bar") {
+      reservationsConfig = await getRestaurantConfigSnapshot(supabase, business.id);
+    } else if (business.businessType === "peluqueria_salon") {
+      reservationsConfig = await getPeluqueriaConfigSnapshot(supabase, business.id);
+    } else if (business.businessType === "gimnasio_academia") {
+      reservationsConfig = await getGimnasioConfigSnapshot(supabase, business.id);
     }
   }
 

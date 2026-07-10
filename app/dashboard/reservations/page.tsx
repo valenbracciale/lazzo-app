@@ -41,9 +41,10 @@ export default async function ReservationsPage() {
   if (business.businessType === "restaurante_bar") {
     // Self-corrective no-show flagging (also runs in the background via
     // pg_cron every minute) - this catches it instantly on page load too.
-    await syncNoShows(business.id);
-
-    const [{ data: resources }, { data: shifts }, { data: settings }] = await Promise.all([
+    // Runs concurrently with the page's own data fetch since neither depends
+    // on the other's result.
+    const [, { data: resources }, { data: shifts }, { data: settings }] = await Promise.all([
+      syncNoShows(business.id),
       supabase
         .from("resources")
         .select("id, name, capacity, zone_name, duration_minutes")
@@ -72,9 +73,8 @@ export default async function ReservationsPage() {
   }
 
   if (business.businessType === "peluqueria_salon") {
-    await syncNoShows(business.id);
-
-    const [{ data: services }, { data: professionals }] = await Promise.all([
+    const [, { data: services }, { data: professionals }] = await Promise.all([
+      syncNoShows(business.id),
       supabase
         .from("services")
         .select("id, name, duration_minutes")
@@ -98,10 +98,8 @@ export default async function ReservationsPage() {
   }
 
   if (business.businessType === "gimnasio_academia") {
-    await syncNoShows(business.id);
-
-    let ownInstructorId: string | null = null;
-    if (business.role === "encargado") {
+    async function fetchOwnInstructorId(): Promise<string | null> {
+      if (business.role !== "encargado") return null;
       const { data: claims } = await supabase.auth.getClaims();
       const userId = claims?.claims?.sub;
       const { data: membership } = await supabase
@@ -110,8 +108,13 @@ export default async function ReservationsPage() {
         .eq("business_id", business.id)
         .eq("user_id", userId)
         .maybeSingle();
-      ownInstructorId = membership?.professional_id ?? null;
+      return membership?.professional_id ?? null;
     }
+
+    const [, ownInstructorId] = await Promise.all([
+      syncNoShows(business.id),
+      fetchOwnInstructorId(),
+    ]);
 
     return (
       <GimnasioReservationsView

@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 
-type TableRow = { name: string; capacity: number };
+type TableRow = { id: string; name: string; capacity: number };
 type ZoneRow = { zoneName: string; tableSize: number; tableCount: number };
 type ShiftRow = {
   name: string;
@@ -48,6 +48,7 @@ function buildResourcesPayload(
 ) {
   if (mode === "tables") {
     return tables.map((t) => ({
+      id: t.id,
       name: t.name,
       capacity: t.capacity,
       zone_name: null,
@@ -73,18 +74,23 @@ export function RestaurantReservationsWizard({
   initialStep,
   initialFormData,
   onDone,
+  isEditingCompleted = false,
 }: {
   businessId: string;
   initialStep: number;
   initialFormData: Record<string, unknown>;
   onDone: () => void;
+  isEditingCompleted?: boolean;
 }) {
   const [step, setStep] = useState(Math.min(initialStep, LAST_STEP));
   const [capacityMode, setCapacityMode] = useState<CapacityMode | null>(
     (initialFormData.capacityMode as CapacityMode | undefined) ?? null
   );
   const [tables, setTables] = useState<TableRow[]>(
-    (initialFormData.tables as TableRow[] | undefined) ?? []
+    ((initialFormData.tables as TableRow[] | undefined) ?? []).map((t) => ({
+      ...t,
+      id: t.id ?? crypto.randomUUID(),
+    }))
   );
   const [zones, setZones] = useState<ZoneRow[]>(
     (initialFormData.zones as ZoneRow[] | undefined) ?? []
@@ -103,6 +109,17 @@ export function RestaurantReservationsWizard({
   const [error, setError] = useState<string | null>(null);
 
   async function persistAndAdvance(nextStep: number, snapshot: Record<string, unknown>) {
+    // Editing an already-completed section (from the settings edit panel)
+    // always restarts at step 0 and never resumes from saved progress, so
+    // autosaving intermediate steps here serves no purpose - and would
+    // wrongly flip `completed` back to false for a live, working section
+    // (shown as "not configured" to the owner and every encargado) the
+    // instant the user takes one step, even if they finish the edit later.
+    if (isEditingCompleted) {
+      setStep(nextStep);
+      return;
+    }
+
     setSaving(true);
     setError(null);
 
@@ -134,13 +151,29 @@ export function RestaurantReservationsWizard({
   }
 
   function handleContinueStep1() {
-    if (capacityMode === "tables" && tables.length === 0) {
-      setError("Agregá al menos una mesa.");
-      return;
+    if (capacityMode === "tables") {
+      if (tables.length === 0) {
+        setError("Agregá al menos una mesa.");
+        return;
+      }
+      for (const table of tables) {
+        if (!table.name.trim() || table.capacity <= 0) {
+          setError("Cada mesa necesita un nombre y una capacidad mayor a 0.");
+          return;
+        }
+      }
     }
-    if (capacityMode === "zones" && zones.length === 0) {
-      setError("Agregá al menos una zona.");
-      return;
+    if (capacityMode === "zones") {
+      if (zones.length === 0) {
+        setError("Agregá al menos una zona.");
+        return;
+      }
+      for (const zone of zones) {
+        if (!zone.zoneName.trim() || zone.tableSize <= 0 || zone.tableCount <= 0) {
+          setError("Cada zona necesita un nombre, un tamaño de mesa y una cantidad de mesas mayores a 0.");
+          return;
+        }
+      }
     }
     const sizes = distinctSizes(capacityMode, tables, zones);
     const nextDurations = { ...durations };
@@ -216,7 +249,10 @@ export function RestaurantReservationsWizard({
   }
 
   function addTable() {
-    setTables((prev) => [...prev, { name: `Mesa ${prev.length + 1}`, capacity: 2 }]);
+    setTables((prev) => [
+      ...prev,
+      { id: crypto.randomUUID(), name: `Mesa ${prev.length + 1}`, capacity: 2 },
+    ]);
   }
   function removeTable(index: number) {
     setTables((prev) => prev.filter((_, i) => i !== index));
@@ -301,7 +337,7 @@ export function RestaurantReservationsWizard({
           </DialogHeader>
           <div className="max-h-80 space-y-2 overflow-y-auto py-4">
             {tables.map((table, index) => (
-              <div key={index} className="flex items-end gap-2">
+              <div key={table.id} className="flex items-end gap-2">
                 <div className="flex-1 space-y-1">
                   <Label>Nombre</Label>
                   <Input

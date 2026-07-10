@@ -109,14 +109,25 @@ export function TeamSettings({
 
   async function handleRevoke(memberId: string) {
     setRevokingId(memberId);
+    setError(null);
 
     const supabase = createClient();
-    await supabase
+    const { data, error: revokeError } = await supabase
       .from("business_members")
       .update({ status: "revoked", revoked_at: new Date().toISOString() })
-      .eq("id", memberId);
+      .eq("id", memberId)
+      .select("id");
 
     setRevokingId(null);
+
+    // RLS lets an UPDATE with no matching row succeed with zero rows affected
+    // instead of erroring - checking only `error` would still miss that and
+    // leave the owner believing access was revoked when it wasn't.
+    if (revokeError || !data || data.length === 0) {
+      setError("No pudimos revocar el acceso. Probá de nuevo.");
+      return;
+    }
+
     router.refresh();
   }
 

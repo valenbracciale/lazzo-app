@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { BusinessType } from "@/lib/business-types";
@@ -12,7 +13,7 @@ export type CurrentBusiness = {
   role: BusinessRole;
 };
 
-export async function getCurrentBusiness(): Promise<CurrentBusiness> {
+export const getCurrentBusiness = cache(async (): Promise<CurrentBusiness> => {
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
   const userId = data?.claims?.sub;
@@ -74,4 +75,4 @@ export async function getCurrentBusiness(): Promise<CurrentBusiness> {
     email,
     role: "encargado",
   };
-}
+});

@@ -27,11 +27,18 @@ export async function inviteMember({
 
   const admin = createAdminClient();
 
-  const { data: existing } = await admin
+  const { data: existing, error: existingError } = await admin
     .from("business_members")
     .select("business_id")
     .eq("email", email)
     .maybeSingle();
+
+  // Don't silently treat a failed lookup as "no conflict" - that would let
+  // the invite proceed past the one guard that stops inviting someone who's
+  // already an encargado at another business (v1 allows only one, forever).
+  if (existingError) {
+    return { error: "No pudimos validar el email. Probá de nuevo." };
+  }
 
   if (existing && existing.business_id !== business.id) {
     return { error: "Este email ya pertenece a otro negocio." };

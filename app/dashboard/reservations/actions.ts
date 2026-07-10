@@ -27,6 +27,7 @@ export async function fetchAvailableSlots(input: {
   localDate: string;
   partySize: number;
   zonePreference: string | null;
+  excludeReservationId?: string | null;
 }): Promise<SlotAvailability[]> {
   const business = await getCurrentBusiness();
   const supabase = await createClient();
@@ -37,6 +38,7 @@ export async function fetchAvailableSlots(input: {
     localDate: input.localDate,
     partySize: input.partySize,
     zonePreference: input.zonePreference,
+    excludeReservationId: input.excludeReservationId,
   });
 }
 
@@ -45,6 +47,7 @@ export async function fetchFreeResources(input: {
   time: string;
   partySize: number;
   zonePreference: string | null;
+  excludeReservationId?: string | null;
 }): Promise<{ id: string; name: string; capacity: number; zone_name: string | null }[]> {
   const business = await getCurrentBusiness();
   const supabase = await createClient();
@@ -56,6 +59,7 @@ export async function fetchFreeResources(input: {
     startsAt,
     partySize: input.partySize,
     zonePreference: input.zonePreference,
+    excludeReservationId: input.excludeReservationId,
   });
 
   return resources.map((r) => ({
@@ -135,11 +139,20 @@ export async function rescheduleRestaurantReservation(input: {
   partySize: number;
   zonePreference: string | null;
   resourceId?: string | null;
-  assignmentMode: "automatic" | "manual";
 }): Promise<{ error?: string }> {
   const business = await getCurrentBusiness();
   const supabase = await createClient();
   const startsAt = localSlotToUtcIso(input.localDate, input.time);
+
+  // Re-derive from reservation_settings instead of trusting a client-sent
+  // assignmentMode, same as createRestaurantReservation - a stale dialog left
+  // open across an owner's mode change shouldn't apply the old mode.
+  const { data: settings } = await supabase
+    .from("reservation_settings")
+    .select("assignment_mode")
+    .eq("business_id", business.id)
+    .maybeSingle();
+  const assignmentMode = settings?.assignment_mode ?? "automatic";
 
   const freeResources = await listFreeResourcesAt({
     supabase,
@@ -147,10 +160,11 @@ export async function rescheduleRestaurantReservation(input: {
     startsAt,
     partySize: input.partySize,
     zonePreference: input.zonePreference,
+    excludeReservationId: input.reservationId,
   });
 
   let resource;
-  if (input.assignmentMode === "manual") {
+  if (assignmentMode === "manual") {
     resource = freeResources.find((r) => r.id === input.resourceId);
   } else {
     resource = freeResources[0];
@@ -172,7 +186,8 @@ export async function rescheduleRestaurantReservation(input: {
       ends_at: endsAt,
     })
     .eq("id", input.reservationId)
-    .eq("business_id", business.id);
+    .eq("business_id", business.id)
+    .in("status", ["confirmed", "en_curso"]);
 
   if (error) {
     if (error.code === "23P01") {

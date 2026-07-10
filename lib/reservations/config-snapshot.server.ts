@@ -14,7 +14,7 @@ export async function getRestaurantConfigSnapshot(
     await Promise.all([
       supabase
         .from("resources")
-        .select("name, capacity, zone_name, duration_minutes")
+        .select("id, name, capacity, zone_name, duration_minutes")
         .eq("business_id", businessId)
         .order("name", { ascending: true }),
       supabase
@@ -34,7 +34,7 @@ export async function getRestaurantConfigSnapshot(
     durations[r.capacity] = r.duration_minutes;
   }
 
-  let tables: { name: string; capacity: number }[] = [];
+  let tables: { id: string; name: string; capacity: number }[] = [];
   let zones: { zoneName: string; tableSize: number; tableCount: number }[] = [];
 
   if (capacityMode === "zones") {
@@ -57,7 +57,7 @@ export async function getRestaurantConfigSnapshot(
     }
     zones = Array.from(zoneMap.values());
   } else {
-    tables = (resources ?? []).map((r) => ({ name: r.name, capacity: r.capacity }));
+    tables = (resources ?? []).map((r) => ({ id: r.id, name: r.name, capacity: r.capacity }));
   }
 
   return {
