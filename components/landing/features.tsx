@@ -1,10 +1,10 @@
 import {
   CalendarCheck,
   BellRing,
+  ShieldCheck,
   PackageSearch,
-  TriangleAlert,
   Wallet,
-  LayoutGrid,
+  AlarmClock,
 } from "lucide-react";
 import {
   Card,
@@ -17,7 +17,8 @@ const features = [
   {
     icon: CalendarCheck,
     title: "Reservas de tus clientes",
-    description: "Agendá todo en un calendario simple, sin planillas ni cuadernos.",
+    description:
+      "Tus clientes sacan su turno o hacen su reserva solos, cuando quieran. Vos ves todo en el panel — por día, semana o mes — sin tener que cargar nada a mano.",
   },
   {
     icon: BellRing,
@@ -25,14 +26,15 @@ const features = [
     description: "Menos ausencias y menos cancelaciones de último momento.",
   },
   {
+    icon: ShieldCheck,
+    title: "Cada usuario ve lo que le corresponde",
+    description:
+      "Vos ves las finanzas completas. Tu encargado carga reservas y stock, pero no accede a los números. Cada profesional ve solo su propia agenda.",
+  },
+  {
     icon: PackageSearch,
     title: "Control de stock en tiempo real",
     description: "Sabé siempre qué tenés y qué necesitás reponer.",
-  },
-  {
-    icon: TriangleAlert,
-    title: "Alertas de stock bajo",
-    description: "Te avisamos antes de que te quedes sin lo que más vendés.",
   },
   {
     icon: Wallet,
@@ -40,9 +42,10 @@ const features = [
     description: "Ingresos, gastos y balance, sin planillas sueltas.",
   },
   {
-    icon: LayoutGrid,
-    title: "Todo en un solo lugar",
-    description: "Sin cuadernos, sin Excel, sin perder el hilo de nada.",
+    icon: AlarmClock,
+    title: "No-shows detectados solos",
+    description:
+      "Si un cliente no llega, Lazzo lo marca automáticamente a los 15 minutos — sin que tengas que estar pendiente del reloj.",
   },
 ];
 
@@ -54,8 +57,8 @@ export function Features() {
           Pensado para dueños de negocio, no para técnicos
         </h2>
         <p className="mt-3 text-(--landing-foreground-muted) text-pretty">
-          Sin tiempo ni ganas de pelearte con software complicado. Lazzo hace
-          lo esencial, simple y en un solo lugar.
+          Sin cursos, sin manuales, sin ayuda técnica. Abrís Lazzo y ya sabés
+          usarlo.
         </p>
       </div>
 

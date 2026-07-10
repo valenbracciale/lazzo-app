@@ -17,10 +17,10 @@ export async function Hero() {
           complicarte
         </h1>
         <p className="text-lg text-(--landing-foreground-muted) text-pretty">
-          Lazzo es la forma más simple de tener un negocio chico bajo
-          control. En un solo lugar: gestionás las reservas de tus clientes,
-          controlás tu stock y llevás tus finanzas del día a día — sin
-          planillas sueltas, sin cuadernos, sin perder el hilo de nada.
+          Lazzo es el panel para restaurantes, barberías, gimnasios, estudios
+          de tatuaje y cualquier negocio que funcione con turnos, reservas o
+          clases. Gestión de reservas, stock y finanzas, en un solo lugar —
+          armado para que lo uses vos, no un técnico.
         </p>
         <div className="flex flex-wrap items-center gap-3">
           <Button asChild size="lg">
