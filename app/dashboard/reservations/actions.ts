@@ -212,6 +212,72 @@ export async function rescheduleRestaurantReservation(input: {
   return {};
 }
 
+// For reservations that were confirmed without a table (any channel that
+// doesn't assign one up front, e.g. public booking under manual assignment
+// mode) - lets the business pick a table after the fact, reusing the same
+// availability check as manual assignment at creation time.
+export async function fetchFreeResourcesForReservation(
+  reservationId: string
+): Promise<{ id: string; name: string; capacity: number; zone_name: string | null }[]> {
+  const business = await getCurrentBusiness();
+  const supabase = await createClient();
+
+  const { data: reservation } = await supabase
+    .from("reservations")
+    .select("starts_at, party_size, zone_preference")
+    .eq("id", reservationId)
+    .eq("business_id", business.id)
+    .maybeSingle();
+
+  if (!reservation) return [];
+
+  const resources = await listFreeResourcesAt({
+    supabase,
+    businessId: business.id,
+    startsAt: reservation.starts_at,
+    partySize: reservation.party_size,
+    zonePreference: reservation.zone_preference,
+    excludeReservationId: reservationId,
+  });
+
+  return resources.map((r) => ({
+    id: r.id,
+    name: r.name,
+    capacity: r.capacity,
+    zone_name: r.zone_name,
+  }));
+}
+
+export async function assignTableToReservation(input: {
+  reservationId: string;
+  resourceId: string;
+}): Promise<{ error?: string }> {
+  const business = await getCurrentBusiness();
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("reservations")
+    .update({ resource_id: input.resourceId })
+    .eq("id", input.reservationId)
+    .eq("business_id", business.id)
+    .eq("status", "confirmed")
+    .is("resource_id", null)
+    .select("id");
+
+  if (error) {
+    if (error.code === "23P01") {
+      return { error: "Esa mesa ya está ocupada en ese horario. Elegí otra." };
+    }
+    return { error: "No pudimos asignar la mesa. Probá de nuevo." };
+  }
+
+  if (!data || data.length === 0) {
+    return { error: "Esta reserva ya no está disponible para asignar mesa." };
+  }
+
+  return {};
+}
+
 export async function syncNoShows(businessId: string): Promise<{ flagged: boolean }> {
   const supabase = await createClient();
 

@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dialog";
 import { RestaurantReservationForm } from "@/components/dashboard/restaurant-reservation-form";
 import { RestaurantRescheduleDialog } from "@/components/dashboard/restaurant-reschedule-dialog";
+import { AssignTableDialog } from "@/components/dashboard/assign-table-dialog";
 import { AlertTriangle, ChevronLeft, ChevronRight, Loader2, Pencil, Plus } from "lucide-react";
 
 export type RestaurantResource = {
@@ -154,6 +155,7 @@ export function RestaurantReservationsView({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [noShows, setNoShows] = useState<RestaurantReservation[]>([]);
   const [rescheduling, setRescheduling] = useState<RestaurantReservation | null>(null);
+  const [assigningTable, setAssigningTable] = useState<RestaurantReservation | null>(null);
 
   async function loadReservations(localDate: string) {
     setLoading(true);
@@ -420,6 +422,11 @@ export function RestaurantReservationsView({
                         <Pencil /> Editar horario
                       </Button>
                     )}
+                    {reservation.status === "confirmed" && !reservation.resource_id && (
+                      <Button size="sm" variant="outline" onClick={() => setAssigningTable(reservation)}>
+                        Asignar mesa
+                      </Button>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>
@@ -449,6 +456,17 @@ export function RestaurantReservationsView({
           onClose={() => setRescheduling(null)}
           onSaved={() => {
             setRescheduling(null);
+            refetchAll();
+          }}
+        />
+      )}
+
+      {assigningTable && (
+        <AssignTableDialog
+          reservation={assigningTable}
+          onClose={() => setAssigningTable(null)}
+          onSaved={() => {
+            setAssigningTable(null);
             refetchAll();
           }}
         />
