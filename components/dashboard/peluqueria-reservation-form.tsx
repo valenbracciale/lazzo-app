@@ -107,6 +107,7 @@ export function PeluqueriaReservationForm({
       serviceId,
       localDate,
       time: selectedSlot,
+      dayOffset: slots.find((s) => s.time === selectedSlot)?.dayOffset ?? 0,
       professionalId:
         !isEncargado && professionalId !== AUTO_PROFESSIONAL ? professionalId : null,
     });

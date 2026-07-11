@@ -93,9 +93,11 @@ export function RestaurantReservationForm({
     let cancelled = false;
     setLoadingResources(true);
 
+    const dayOffset = slots.find((s) => s.time === selectedSlot)?.dayOffset ?? 0;
     fetchFreeResources({
       localDate,
       time: selectedSlot,
+      dayOffset,
       partySize,
       zonePreference: effectiveZonePreference,
     }).then((result) => {
@@ -109,7 +111,7 @@ export function RestaurantReservationForm({
     return () => {
       cancelled = true;
     };
-  }, [selectedSlot, assignmentMode, localDate, partySize, effectiveZonePreference]);
+  }, [selectedSlot, assignmentMode, localDate, partySize, effectiveZonePreference, slots]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -132,6 +134,7 @@ export function RestaurantReservationForm({
       notes: notes || null,
       localDate,
       time: selectedSlot,
+      dayOffset: slots.find((s) => s.time === selectedSlot)?.dayOffset ?? 0,
       partySize,
       zonePreference: effectiveZonePreference,
       resourceId: assignmentMode === "manual" ? selectedResourceId : undefined,

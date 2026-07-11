@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 
-export type TimeSlot = { time: string; available: boolean };
+export type TimeSlot = { time: string; available: boolean; dayOffset: number };
 
 // Scroll/wheel-style picker: every slot in the day is always listed (never
 // omitted), occupied ones stay visible but disabled with "Ocupado" so the
@@ -49,7 +49,7 @@ export function TimeWheelPicker({
           const isSelected = value === slot.time;
           return (
             <button
-              key={slot.time}
+              key={`${slot.time}-${slot.dayOffset}`}
               ref={isSelected ? selectedRef : null}
               type="button"
               disabled={disabled || !slot.available}

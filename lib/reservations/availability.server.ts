@@ -10,7 +10,13 @@ import type { createClient } from "@/lib/supabase/server";
 export const BUSINESS_UTC_OFFSET_MINUTES = -180;
 export const SLOT_MINUTES = 15;
 
-export type SlotAvailability = { time: string; available: boolean };
+// dayOffset: which calendar day (relative to the localDate a slot list was
+// requested for) this slot's absolute instant actually falls on - 0 for the
+// same day, 1 for the early-morning tail of a shift that crosses midnight
+// (e.g. a 19:00-01:00 shift's "00:15" slot is really on localDate + 1 day).
+// Callers must round-trip this back when booking the slot, since `time`
+// alone ("00:15") is ambiguous about which calendar day it belongs to.
+export type SlotAvailability = { time: string; available: boolean; dayOffset: number };
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
@@ -39,6 +45,11 @@ type OccupiedReservation = {
 export function parseLocalDate(localDate: string) {
   const [year, month, day] = localDate.split("-").map(Number);
   return { year, month, day };
+}
+
+export function addLocalDays(localDate: string, days: number): string {
+  const { year, month, day } = parseLocalDate(localDate);
+  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
 }
 
 function parseHms(hms: string) {
@@ -75,10 +86,14 @@ export function getShiftWindowsForDate(
   const dayOfWeek = getLocalDayOfWeek(localDate);
   return shifts
     .filter((s) => s.days_of_week.includes(dayOfWeek))
-    .map((s) => ({
-      start: localToUtcMs(localDate, s.start_time),
-      end: localToUtcMs(localDate, s.end_time),
-    }));
+    .map((s) => {
+      const start = localToUtcMs(localDate, s.start_time);
+      let end = localToUtcMs(localDate, s.end_time);
+      // A shift like 19:00-01:00 closes the following calendar day - roll
+      // the end forward instead of computing a zero/negative-length window.
+      if (end <= start) end += 24 * 60 * 60_000;
+      return { start, end };
+    });
 }
 
 export function generateSlotStartsUtcMs(windows: { start: number; end: number }[]): number[] {
@@ -199,9 +214,11 @@ export async function getAvailableSlots({
 
   const windows = getShiftWindowsForDate((shifts ?? []) as Shift[], localDate);
   const slotStarts = generateSlotStartsUtcMs(windows);
+  const dayStartMs = localToUtcMs(localDate, "00:00");
 
   return slotStarts.map((startMs) => ({
     time: formatLocalHm(utcIsoToLocalMs(new Date(startMs).toISOString())),
+    dayOffset: Math.floor((startMs - dayStartMs) / (24 * 60 * 60_000)),
     available: candidates.some((resource) => isResourceFreeAt(resource, startMs, occupied)),
   }));
 }

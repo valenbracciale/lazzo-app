@@ -14,6 +14,7 @@ import { TeamSettings } from "@/components/dashboard/team-settings";
 import { MercadoPagoSettings } from "@/components/dashboard/mercadopago-settings";
 import { ReservationsEditPanel } from "@/components/dashboard/reservations-edit-panel";
 import { BusinessTypeDangerZone } from "@/components/dashboard/business-type-danger-zone";
+import { PublicBookingSettings } from "@/components/dashboard/public-booking-settings";
 import { reservationsLabel } from "@/lib/business-types";
 
 export default async function SettingsPage() {
@@ -33,6 +34,7 @@ export default async function SettingsPage() {
     { data: professionalsData },
     { data: mpConnection },
     setup,
+    { data: publicBookingSettings },
   ] = await Promise.all([
     supabase
       .from("business_members")
@@ -56,17 +58,26 @@ export default async function SettingsPage() {
     business.businessType
       ? getSectionSetup(supabase, business.id, "reservations")
       : Promise.resolve(null),
+    business.businessType
+      ? supabase
+          .from("public_booking_settings")
+          .select("slug, enabled, min_advance_minutes, max_advance_days")
+          .eq("business_id", business.id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
   ]);
 
   const professionals = professionalsData ?? [];
   const professionalLabel = business.businessType === "gimnasio_academia" ? "profesor" : "profesional";
 
+  const headersList = await headers();
+  const host = headersList.get("host");
+  const protocol = host?.startsWith("localhost") ? "http" : "https";
+  const origin = `${protocol}://${host}`;
+
   let mercadoPago: { connected: boolean; authUrl: string } | null = null;
   if (wantsMercadoPago) {
-    const headersList = await headers();
-    const host = headersList.get("host");
-    const protocol = host?.startsWith("localhost") ? "http" : "https";
-    const redirectUri = `${protocol}://${host}/api/mercadopago/oauth/callback`;
+    const redirectUri = `${origin}/api/mercadopago/oauth/callback`;
     const authUrl =
       `https://auth.mercadopago.com/authorization?client_id=${process.env.MERCADOPAGO_CLIENT_ID}` +
       `&response_type=code&platform_id=mp&redirect_uri=${encodeURIComponent(redirectUri)}` +
@@ -105,6 +116,16 @@ export default async function SettingsPage() {
       />
       {mercadoPago && (
         <MercadoPagoSettings connected={mercadoPago.connected} authUrl={mercadoPago.authUrl} />
+      )}
+      {business.businessType && (
+        <PublicBookingSettings
+          businessName={business.name}
+          origin={origin}
+          initialSlug={publicBookingSettings?.slug ?? ""}
+          initialEnabled={publicBookingSettings?.enabled ?? false}
+          initialMinAdvanceMinutes={publicBookingSettings?.min_advance_minutes ?? 60}
+          initialMaxAdvanceDays={publicBookingSettings?.max_advance_days ?? 30}
+        />
       )}
       {business.businessType && <BusinessTypeDangerZone />}
     </div>

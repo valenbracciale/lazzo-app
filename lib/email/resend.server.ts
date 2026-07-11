@@ -43,6 +43,44 @@ export async function sendWaitlistSpotEmail(input: {
   return {};
 }
 
+// SMS/WhatsApp comprobante is a planned future channel (no provider
+// connected yet, per CLAUDE.md roadmap) - it would reuse this same
+// `to`/`customerName`/`whenLabel`/`detailLabel` shape with a different
+// transport instead of `client.emails.send`, so add it alongside this
+// function rather than as a separate one-off when that provider exists.
+export async function sendPublicBookingConfirmationEmail(input: {
+  to: string;
+  customerName: string;
+  businessName: string;
+  whenLabel: string;
+  detailLabel: string;
+  cancelUrl: string;
+}): Promise<{ error?: string }> {
+  const client = getClient();
+  if (!client) {
+    return { error: "RESEND_API_KEY no está configurado." };
+  }
+
+  const { error } = await client.emails.send({
+    from: FROM_ADDRESS,
+    to: input.to,
+    subject: `Reserva confirmada en ${input.businessName}`,
+    html: `
+      <p>Hola ${input.customerName},</p>
+      <p>Tu reserva en <strong>${input.businessName}</strong> quedó confirmada.</p>
+      <p><strong>${input.whenLabel}</strong><br>${input.detailLabel}</p>
+      <p>Si no podés ir, cancelá tu lugar desde este link:</p>
+      <p><a href="${input.cancelUrl}">Cancelar mi reserva</a></p>
+    `,
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return {};
+}
+
 export async function sendBusinessTypeChangeEmail(input: {
   to: string;
   businessName: string;

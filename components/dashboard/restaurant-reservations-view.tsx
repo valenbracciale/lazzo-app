@@ -101,14 +101,34 @@ function currentLocalHm(): string {
   return `${hours}:${minutes}`;
 }
 
+function isWithinShift(shift: RestaurantShift, hm: string): boolean {
+  const start = shift.start_time.slice(0, 5);
+  const end = shift.end_time.slice(0, 5);
+  if (end > start) return hm >= start && hm < end;
+  // Crosses midnight (e.g. 19:00-01:00): active from open to midnight, and
+  // from midnight to close.
+  return hm >= start || hm < end;
+}
+
 function findActiveShift(shifts: RestaurantShift[]): RestaurantShift | null {
   const now = new Date();
-  const dayOfWeek = now.getDay();
   const hm = currentLocalHm();
+  const dayOfWeek = now.getDay();
+  // An overnight shift's days_of_week is anchored to the day it *starts* -
+  // past midnight, "today" is actually still yesterday's shift.
+  const previousDayOfWeek = (dayOfWeek + 6) % 7;
+
   return (
-    shifts.find(
-      (s) => s.days_of_week.includes(dayOfWeek) && hm >= s.start_time.slice(0, 5) && hm < s.end_time.slice(0, 5)
-    ) ?? null
+    shifts.find((s) => {
+      if (!isWithinShift(s, hm)) return false;
+      const start = s.start_time.slice(0, 5);
+      const end = s.end_time.slice(0, 5);
+      const crossesMidnight = end <= start;
+      if (crossesMidnight && hm < end) {
+        return s.days_of_week.includes(previousDayOfWeek);
+      }
+      return s.days_of_week.includes(dayOfWeek);
+    }) ?? null
   );
 }
 

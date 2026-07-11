@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentBusiness } from "@/lib/business";
-import { localSlotToUtcIso } from "@/lib/reservations/availability.server";
+import { addLocalDays, localSlotToUtcIso } from "@/lib/reservations/availability.server";
 import type { SlotAvailability } from "@/lib/reservations/availability.server";
 import {
   fetchEligibleProfessionals,
@@ -10,6 +10,14 @@ import {
   listFreeProfessionalsAt,
   type Professional,
 } from "@/lib/reservations/peluqueria-availability.server";
+
+// See resolveStartsAt in app/dashboard/reservations/actions.ts: a slot's
+// "HH:MM" alone is ambiguous once a shift can cross midnight, so the
+// dayOffset from the slot list must be applied before resolving to an
+// absolute instant.
+function resolveStartsAt(localDate: string, time: string, dayOffset: number | undefined): string {
+  return localSlotToUtcIso(addLocalDays(localDate, dayOffset ?? 0), time);
+}
 
 export async function fetchAvailableSlotsForService(input: {
   serviceId: string;
@@ -45,6 +53,7 @@ type CreatePeluqueriaReservationInput = {
   serviceId: string;
   localDate: string;
   time: string;
+  dayOffset?: number;
   professionalId?: string | null;
 };
 
@@ -55,11 +64,12 @@ export async function reschedulePeluqueriaReservation(input: {
   serviceId: string;
   localDate: string;
   time: string;
+  dayOffset?: number;
   professionalId?: string | null;
 }): Promise<{ error?: string }> {
   const business = await getCurrentBusiness();
   const supabase = await createClient();
-  const startsAt = localSlotToUtcIso(input.localDate, input.time);
+  const startsAt = resolveStartsAt(input.localDate, input.time, input.dayOffset);
 
   const { data: service } = await supabase
     .from("services")
@@ -131,7 +141,7 @@ export async function createPeluqueriaReservation(
 ): Promise<{ error?: string }> {
   const business = await getCurrentBusiness();
   const supabase = await createClient();
-  const startsAt = localSlotToUtcIso(input.localDate, input.time);
+  const startsAt = resolveStartsAt(input.localDate, input.time, input.dayOffset);
 
   const { data: service } = await supabase
     .from("services")

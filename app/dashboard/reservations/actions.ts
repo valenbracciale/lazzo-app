@@ -3,11 +3,21 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentBusiness } from "@/lib/business";
 import {
+  addLocalDays,
   getAvailableSlots,
   listFreeResourcesAt,
   localSlotToUtcIso,
   type SlotAvailability,
 } from "@/lib/reservations/availability.server";
+
+// A slot's `time` ("HH:MM") alone is ambiguous once a shift can cross
+// midnight - "00:15" could belong to the picked localDate or to the day
+// after, depending on which shift produced it. `dayOffset` (from the slot
+// list returned by fetchAvailableSlots) disambiguates that before resolving
+// to an absolute instant.
+function resolveStartsAt(localDate: string, time: string, dayOffset: number | undefined): string {
+  return localSlotToUtcIso(addLocalDays(localDate, dayOffset ?? 0), time);
+}
 
 type CreateRestaurantReservationInput = {
   customerName: string;
@@ -16,6 +26,7 @@ type CreateRestaurantReservationInput = {
   notes: string | null;
   localDate: string;
   time: string;
+  dayOffset?: number;
   partySize: number;
   zonePreference: string | null;
   resourceId?: string | null;
@@ -45,13 +56,14 @@ export async function fetchAvailableSlots(input: {
 export async function fetchFreeResources(input: {
   localDate: string;
   time: string;
+  dayOffset?: number;
   partySize: number;
   zonePreference: string | null;
   excludeReservationId?: string | null;
 }): Promise<{ id: string; name: string; capacity: number; zone_name: string | null }[]> {
   const business = await getCurrentBusiness();
   const supabase = await createClient();
-  const startsAt = localSlotToUtcIso(input.localDate, input.time);
+  const startsAt = resolveStartsAt(input.localDate, input.time, input.dayOffset);
 
   const resources = await listFreeResourcesAt({
     supabase,
@@ -75,7 +87,7 @@ export async function createRestaurantReservation(
 ): Promise<{ error?: string }> {
   const business = await getCurrentBusiness();
   const supabase = await createClient();
-  const startsAt = localSlotToUtcIso(input.localDate, input.time);
+  const startsAt = resolveStartsAt(input.localDate, input.time, input.dayOffset);
 
   const { data: settings } = await supabase
     .from("reservation_settings")
@@ -136,13 +148,14 @@ export async function rescheduleRestaurantReservation(input: {
   reservationId: string;
   localDate: string;
   time: string;
+  dayOffset?: number;
   partySize: number;
   zonePreference: string | null;
   resourceId?: string | null;
 }): Promise<{ error?: string }> {
   const business = await getCurrentBusiness();
   const supabase = await createClient();
-  const startsAt = localSlotToUtcIso(input.localDate, input.time);
+  const startsAt = resolveStartsAt(input.localDate, input.time, input.dayOffset);
 
   // Re-derive from reservation_settings instead of trusting a client-sent
   // assignmentMode, same as createRestaurantReservation - a stale dialog left

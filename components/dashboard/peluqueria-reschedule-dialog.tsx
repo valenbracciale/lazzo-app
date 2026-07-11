@@ -67,6 +67,7 @@ export function PeluqueriaRescheduleDialog({
       serviceId: reservation.service_id,
       localDate,
       time: selectedSlot,
+      dayOffset: slots.find((s) => s.time === selectedSlot)?.dayOffset ?? 0,
       professionalId: reservation.professional_id,
     });
 

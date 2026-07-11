@@ -82,6 +82,66 @@ export async function inviteMember({
   return {};
 }
 
+export async function updatePublicBookingSettings(input: {
+  slug: string;
+  enabled: boolean;
+  minAdvanceMinutes: number;
+  maxAdvanceDays: number;
+}): Promise<{ error?: string }> {
+  const business = await getCurrentBusiness();
+  if (business.role !== "owner") {
+    return { error: "No tenés permiso para configurar la reserva pública." };
+  }
+
+  const slug = input.slug.trim().toLowerCase();
+  if (!/^[a-z0-9-]{3,50}$/.test(slug)) {
+    return {
+      error: "El link solo puede tener letras minúsculas, números y guiones (3 a 50 caracteres).",
+    };
+  }
+  if (input.minAdvanceMinutes < 0 || input.maxAdvanceDays <= 0) {
+    return { error: "Revisá los valores de anticipación." };
+  }
+
+  // RLS would hide other businesses' rows from the caller's own session -
+  // same reason inviteMember's cross-business email check uses the admin
+  // client, above.
+  const admin = createAdminClient();
+  const { data: existing } = await admin
+    .from("public_booking_settings")
+    .select("business_id")
+    .eq("slug", slug)
+    .maybeSingle();
+
+  if (existing && existing.business_id !== business.id) {
+    return { error: "Ese link ya está en uso. Probá con otro." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("public_booking_settings").upsert(
+    {
+      business_id: business.id,
+      slug,
+      enabled: input.enabled,
+      min_advance_minutes: input.minAdvanceMinutes,
+      max_advance_days: input.maxAdvanceDays,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "business_id" }
+  );
+
+  if (error) {
+    // Final authority against a race with another owner claiming the same
+    // slug between the check above and this write.
+    if (error.code === "23505") {
+      return { error: "Ese link ya está en uso. Probá con otro." };
+    }
+    return { error: "No pudimos guardar la configuración. Probá de nuevo." };
+  }
+
+  return {};
+}
+
 export async function requestBusinessTypeChange(): Promise<{ error?: string }> {
   const business = await getCurrentBusiness();
   if (business.role !== "owner") {

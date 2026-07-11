@@ -3,7 +3,7 @@ import {
   BUSINESS_UTC_OFFSET_MINUTES,
   formatLocalHm,
   generateSlotStartsUtcMs,
-  getLocalDayOfWeek,
+  getShiftWindowsForDate,
   localToUtcMs,
   utcIsoToLocalMs,
   type Shift,
@@ -27,16 +27,6 @@ type OccupiedReservation = {
   starts_at: string;
   effectiveEndsAt: string;
 };
-
-function shiftWindowsForDate(shifts: Shift[], localDate: string): { start: number; end: number }[] {
-  const dayOfWeek = getLocalDayOfWeek(localDate);
-  return shifts
-    .filter((s) => s.days_of_week.includes(dayOfWeek))
-    .map((s) => ({
-      start: localToUtcMs(localDate, s.start_time),
-      end: localToUtcMs(localDate, s.end_time),
-    }));
-}
 
 function effectiveShiftsForProfessional(
   allShifts: (Shift & { professional_id: string | null })[],
@@ -151,7 +141,7 @@ export async function getAvailableSlotsForService({
 
   const perProfessional = await Promise.all(
     professionals.map(async (professional) => {
-      const windows = shiftWindowsForDate(
+      const windows = getShiftWindowsForDate(
         effectiveShiftsForProfessional(allShifts, professional.id),
         localDate
       );
@@ -173,9 +163,11 @@ export async function getAvailableSlotsForService({
   const allWindows = perProfessional.flatMap((p) => p.windows);
   if (allWindows.length === 0) return [];
   const slotStarts = generateSlotStartsUtcMs(allWindows);
+  const dayStartMs = localToUtcMs(localDate, "00:00");
 
   return slotStarts.map((startMs) => ({
     time: formatLocalHm(utcIsoToLocalMs(new Date(startMs).toISOString())),
+    dayOffset: Math.floor((startMs - dayStartMs) / (24 * 60 * 60_000)),
     available: perProfessional.some(({ windows, occupied }) =>
       isFreeAt(startMs, windows, occupied, durationMs)
     ),

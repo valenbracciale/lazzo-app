@@ -124,8 +124,10 @@ function validateShifts(shifts: ShiftRow[]): string | null {
     if (!shift.name.trim() || shift.daysOfWeek.length === 0) {
       return "Cada turno necesita un nombre y al menos un día.";
     }
-    if (shift.endTime <= shift.startTime) {
-      return "El horario de cierre tiene que ser posterior al de apertura.";
+    if (shift.endTime === shift.startTime) {
+      // A shift like 19:00-01:00 crosses midnight and is valid - only an
+      // identical open/close time (zero-length shift) is actually invalid.
+      return "El horario de cierre no puede ser igual al de apertura.";
     }
   }
   return null;

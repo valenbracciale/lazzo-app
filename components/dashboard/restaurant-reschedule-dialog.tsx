@@ -79,6 +79,7 @@ export function RestaurantRescheduleDialog({
     fetchFreeResources({
       localDate,
       time: selectedSlot,
+      dayOffset: slots.find((s) => s.time === selectedSlot)?.dayOffset ?? 0,
       partySize: reservation.party_size,
       zonePreference: reservation.zone_preference,
       excludeReservationId: reservation.id,
@@ -114,6 +115,7 @@ export function RestaurantRescheduleDialog({
       reservationId: reservation.id,
       localDate,
       time: selectedSlot,
+      dayOffset: slots.find((s) => s.time === selectedSlot)?.dayOffset ?? 0,
       partySize: reservation.party_size,
       zonePreference: reservation.zone_preference,
       resourceId: selectedResourceId,

@@ -198,8 +198,10 @@ export function RestaurantReservationsWizard({
         setError("Cada turno necesita un nombre y al menos un día.");
         return;
       }
-      if (shift.endTime <= shift.startTime) {
-        setError("El horario de cierre tiene que ser posterior al de apertura.");
+      if (shift.endTime === shift.startTime) {
+        // A shift like 19:00-01:00 crosses midnight and is valid - only an
+        // identical open/close time (zero-length shift) is actually invalid.
+        setError("El horario de cierre no puede ser igual al de apertura.");
         return;
       }
     }
