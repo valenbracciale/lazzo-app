@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Poppins, Instrument_Serif } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
 
 const poppins = Poppins({
@@ -40,7 +41,7 @@ export default function RootLayout({
           removes this class itself (see UnlockTheme) while mounted. */}
       <body className="theme-locked-light min-h-full flex flex-col">
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-          {children}
+          <TooltipProvider>{children}</TooltipProvider>
         </ThemeProvider>
       </body>
     </html>

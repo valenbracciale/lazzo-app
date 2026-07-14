@@ -19,7 +19,7 @@ export default async function PublicBookingPage({
     const [{ data: settings }, { data: resources }] = await Promise.all([
       supabase
         .from("reservation_settings")
-        .select("capacity_mode, assignment_mode")
+        .select("capacity_mode, assignment_mode, max_party_size")
         .eq("business_id", business.id)
         .maybeSingle(),
       supabase
@@ -37,8 +37,10 @@ export default async function PublicBookingPage({
       <PublicRestaurantBooking
         slug={slug}
         businessName={business.name}
+        logoUrl={business.logoUrl}
         capacityMode={(settings?.capacity_mode ?? "tables") as "tables" | "zones"}
         assignmentMode={(settings?.assignment_mode ?? "automatic") as "automatic" | "manual"}
+        maxPartySize={settings?.max_party_size ?? 20}
         zoneNames={zoneNames}
       />
     );
@@ -51,11 +53,18 @@ export default async function PublicBookingPage({
       .eq("business_id", business.id)
       .order("name", { ascending: true });
 
-    return <PublicPeluqueriaBooking slug={slug} businessName={business.name} services={services ?? []} />;
+    return (
+      <PublicPeluqueriaBooking
+        slug={slug}
+        businessName={business.name}
+        logoUrl={business.logoUrl}
+        services={services ?? []}
+      />
+    );
   }
 
   if (business.businessType === "gimnasio_academia") {
-    return <PublicGimnasioBooking slug={slug} businessName={business.name} />;
+    return <PublicGimnasioBooking slug={slug} businessName={business.name} logoUrl={business.logoUrl} />;
   }
 
   notFound();

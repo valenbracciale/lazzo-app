@@ -142,6 +142,27 @@ export async function updatePublicBookingSettings(input: {
   return {};
 }
 
+export async function updateBusinessLogo(input: {
+  logoUrl: string | null;
+}): Promise<{ error?: string }> {
+  const business = await getCurrentBusiness();
+  if (business.role !== "owner") {
+    return { error: "No tenés permiso para cambiar el logo." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("businesses")
+    .update({ logo_url: input.logoUrl })
+    .eq("id", business.id);
+
+  if (error) {
+    return { error: "No pudimos guardar el logo. Probá de nuevo." };
+  }
+
+  return {};
+}
+
 export async function requestBusinessTypeChange(): Promise<{ error?: string }> {
   const business = await getCurrentBusiness();
   if (business.role !== "owner") {

@@ -163,31 +163,32 @@ function isResourceFreeAt(
   });
 }
 
-function fittingResources(
+// Party size is validated against a business-configured maximum
+// (reservation_settings.max_party_size), not against any single table's
+// capacity - a party can outsize the table it ends up assigned to (or end up
+// with no table at all, for the business to assign manually later). So
+// resource eligibility here is a zone preference only, never a capacity cut.
+function zoneFilteredResources(
   resources: Resource[],
-  partySize: number,
   zonePreference: string | null | undefined
 ): Resource[] {
-  const byCapacity = resources.filter((r) => r.capacity >= partySize);
-  if (!zonePreference) return byCapacity;
-  const inZone = byCapacity.filter((r) => r.zone_name === zonePreference);
+  if (!zonePreference) return resources;
+  const inZone = resources.filter((r) => r.zone_name === zonePreference);
   // "Zona preferida" is a soft preference, not a hard requirement: fall back
-  // to any zone if the preferred one has no table big enough at all.
-  return inZone.length > 0 ? inZone : byCapacity;
+  // to any zone if the preferred one has no table at all.
+  return inZone.length > 0 ? inZone : resources;
 }
 
 export async function getAvailableSlots({
   supabase,
   businessId,
   localDate,
-  partySize,
   zonePreference,
   excludeReservationId,
 }: {
   supabase: Supabase;
   businessId: string;
   localDate: string;
-  partySize: number;
   zonePreference?: string | null;
   excludeReservationId?: string | null;
 }): Promise<SlotAvailability[]> {
@@ -200,7 +201,7 @@ export async function getAvailableSlots({
   ]);
 
   const allResources = (resources ?? []) as Resource[];
-  const candidates = fittingResources(allResources, partySize, zonePreference);
+  const candidates = zoneFilteredResources(allResources, zonePreference);
   if (candidates.length === 0) return [];
 
   const maxDuration = Math.max(...allResources.map((r) => r.duration_minutes), 0);
@@ -244,7 +245,7 @@ export async function listFreeResourcesAt({
     .eq("business_id", businessId);
 
   const allResources = (resources ?? []) as Resource[];
-  const candidates = fittingResources(allResources, partySize, zonePreference);
+  const candidates = zoneFilteredResources(allResources, zonePreference);
   if (candidates.length === 0) return [];
 
   const localDate = new Date(
@@ -263,14 +264,20 @@ export async function listFreeResourcesAt({
 
   const startMs = new Date(startsAt).getTime();
   const free = candidates.filter((resource) => isResourceFreeAt(resource, startMs, occupied));
-  // Best-fit: smallest capacity that still fits, preferring the requested zone.
+  // Best-fit first: smallest table that still fits the party, preferring the
+  // requested zone; tables too small for the party (allowed - capacity is no
+  // longer a hard requirement) are listed last, largest first, since they're
+  // the closest fallback if the caller/staff chooses to seat there anyway.
   return free.sort((a, b) => {
     if (zonePreference) {
       const aMatch = a.zone_name === zonePreference ? 0 : 1;
       const bMatch = b.zone_name === zonePreference ? 0 : 1;
       if (aMatch !== bMatch) return aMatch - bMatch;
     }
-    return a.capacity - b.capacity;
+    const aFits = a.capacity >= partySize;
+    const bFits = b.capacity >= partySize;
+    if (aFits !== bFits) return aFits ? -1 : 1;
+    return aFits ? a.capacity - b.capacity : b.capacity - a.capacity;
   });
 }
 

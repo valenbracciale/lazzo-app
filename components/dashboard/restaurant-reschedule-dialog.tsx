@@ -24,6 +24,8 @@ import type { RestaurantReservation } from "@/components/dashboard/restaurant-re
 
 type FreeResource = { id: string; name: string; capacity: number; zone_name: string | null };
 
+const NO_TABLE = "__none__";
+
 export function RestaurantRescheduleDialog({
   reservation,
   assignmentMode,
@@ -53,7 +55,6 @@ export function RestaurantRescheduleDialog({
     setLoadingSlots(true);
     fetchAvailableSlots({
       localDate,
-      partySize: reservation.party_size,
       zonePreference: reservation.zone_preference,
       excludeReservationId: reservation.id,
     }).then((result) => {
@@ -87,7 +88,8 @@ export function RestaurantRescheduleDialog({
       if (!cancelled) {
         setFreeResources(result);
         if (!result.some((r) => r.id === selectedResourceId)) {
-          setSelectedResourceId(result[0]?.id ?? null);
+          const fitting = result.find((r) => r.capacity >= reservation.party_size);
+          setSelectedResourceId(fitting?.id ?? null);
         }
         setLoadingResources(false);
       }
@@ -98,12 +100,14 @@ export function RestaurantRescheduleDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSlot, localDate]);
 
+  const hasFittingResource = freeResources.some((r) => r.capacity >= reservation.party_size);
+
   async function handleSave() {
     if (!selectedSlot) {
       setError("Elegí un horario disponible.");
       return;
     }
-    if (assignmentMode === "manual" && !selectedResourceId) {
+    if (assignmentMode === "manual" && hasFittingResource && !selectedResourceId) {
       setError("Elegí una mesa.");
       return;
     }
@@ -166,18 +170,32 @@ export function RestaurantRescheduleDialog({
               ) : freeResources.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No hay mesas libres a ese horario.</p>
               ) : (
-                <Select value={selectedResourceId ?? undefined} onValueChange={setSelectedResourceId}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {freeResources.map((resource) => (
-                      <SelectItem key={resource.id} value={resource.id}>
-                        {resource.name} ({resource.capacity} pers.)
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <>
+                  <Select
+                    value={selectedResourceId ?? NO_TABLE}
+                    onValueChange={(value) => setSelectedResourceId(value === NO_TABLE ? null : value)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {!hasFittingResource && (
+                        <SelectItem value={NO_TABLE}>Sin mesa asignada (asignar después)</SelectItem>
+                      )}
+                      {freeResources.map((resource) => (
+                        <SelectItem key={resource.id} value={resource.id}>
+                          {resource.name} ({resource.capacity} pers.)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {!hasFittingResource && (
+                    <p className="text-xs text-muted-foreground">
+                      Ninguna mesa libre tiene capacidad para {reservation.party_size} comensales.
+                      Podés dejarla sin mesa y asignarla después.
+                    </p>
+                  )}
+                </>
               )}
             </div>
           )}

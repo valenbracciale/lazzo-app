@@ -27,10 +27,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { RestaurantReservationForm } from "@/components/dashboard/restaurant-reservation-form";
 import { RestaurantRescheduleDialog } from "@/components/dashboard/restaurant-reschedule-dialog";
 import { AssignTableDialog } from "@/components/dashboard/assign-table-dialog";
-import { AlertTriangle, ChevronLeft, ChevronRight, Loader2, Pencil, Plus } from "lucide-react";
+import {
+  AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  Pencil,
+  Plus,
+  StickyNote,
+} from "lucide-react";
 
 export type RestaurantResource = {
   id: string;
@@ -139,12 +148,14 @@ export function RestaurantReservationsView({
   shifts,
   capacityMode,
   assignmentMode,
+  maxPartySize,
 }: {
   businessId: string;
   resources: RestaurantResource[];
   shifts: RestaurantShift[];
   capacityMode: "tables" | "zones";
   assignmentMode: "automatic" | "manual";
+  maxPartySize: number;
 }) {
   const today = useSyncExternalStore(noopSubscribe, getTodaySnapshot, getTodayServerSnapshot);
   const [manualDate, setManualDate] = useState<string | null>(null);
@@ -395,7 +406,21 @@ export function RestaurantReservationsView({
                   {formatLocalTime(reservation.starts_at)}
                   {reservation.ends_at ? ` – ${formatLocalTime(reservation.ends_at)}` : ""}
                 </TableCell>
-                <TableCell>{reservation.customer_name}</TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1.5">
+                    <span>{reservation.customer_name}</span>
+                    {reservation.notes && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span tabIndex={0} className="inline-flex cursor-help text-muted-foreground">
+                            <StickyNote className="size-3.5" aria-label="Tiene notas" />
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>{reservation.notes}</TooltipContent>
+                      </Tooltip>
+                    )}
+                  </div>
+                </TableCell>
                 <TableCell>{reservation.party_size}</TableCell>
                 <TableCell>{resourceName(reservation.resource_id)}</TableCell>
                 <TableCell>
@@ -443,6 +468,7 @@ export function RestaurantReservationsView({
           <RestaurantReservationForm
             capacityMode={capacityMode}
             assignmentMode={assignmentMode}
+            maxPartySize={maxPartySize}
             zoneNames={zoneNames}
             onSaved={handleSaved}
           />

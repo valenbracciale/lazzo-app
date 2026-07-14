@@ -29,10 +29,12 @@ type Professional = { id: string; name: string };
 export function PublicPeluqueriaBooking({
   slug,
   businessName,
+  logoUrl,
   services,
 }: {
   slug: string;
   businessName: string;
+  logoUrl: string | null;
   services: Service[];
 }) {
   const [customerName, setCustomerName] = useState("");
@@ -150,6 +152,10 @@ export function PublicPeluqueriaBooking({
   return (
     <div className="mx-auto max-w-lg space-y-6 px-4 py-10">
       <div className="space-y-1 text-center">
+        {logoUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={logoUrl} alt={businessName} className="mx-auto mb-2 h-16 w-auto object-contain" />
+        )}
         <p className="text-sm text-muted-foreground">Reservar en</p>
         <h1 className="text-2xl font-bold">{businessName}</h1>
       </div>

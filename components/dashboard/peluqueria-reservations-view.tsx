@@ -39,7 +39,16 @@ import {
   type PeluqueriaService,
 } from "@/components/dashboard/peluqueria-reservation-form";
 import { PeluqueriaRescheduleDialog } from "@/components/dashboard/peluqueria-reschedule-dialog";
-import { AlertTriangle, ChevronLeft, ChevronRight, Loader2, Pencil, Plus } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  Pencil,
+  Plus,
+  StickyNote,
+} from "lucide-react";
 
 const ALL_PROFESSIONALS = "__all__";
 
@@ -57,6 +66,7 @@ export type PeluqueriaReservation = {
   status: "confirmed" | "en_curso" | "cancelled" | "completed" | "no_show";
   service_id: string | null;
   professional_id: string | null;
+  notes: string | null;
   services: { name: string } | null;
   professionals: { name: string } | null;
 };
@@ -338,7 +348,21 @@ export function PeluqueriaReservationsView({
                   {formatLocalTime(reservation.starts_at)}
                   {reservation.ends_at ? ` – ${formatLocalTime(reservation.ends_at)}` : ""}
                 </TableCell>
-                <TableCell>{reservation.customer_name}</TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1.5">
+                    <span>{reservation.customer_name}</span>
+                    {reservation.notes && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span tabIndex={0} className="inline-flex cursor-help text-muted-foreground">
+                            <StickyNote className="size-3.5" aria-label="Tiene notas" />
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>{reservation.notes}</TooltipContent>
+                      </Tooltip>
+                    )}
+                  </div>
+                </TableCell>
                 <TableCell>{reservation.services?.name ?? "—"}</TableCell>
                 <TableCell>{reservation.professionals?.name ?? "—"}</TableCell>
                 <TableCell>

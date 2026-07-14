@@ -22,17 +22,20 @@ import {
 } from "@/app/dashboard/reservations/actions";
 
 const NO_ZONE = "__any__";
+const NO_TABLE = "__none__";
 
 type FreeResource = { id: string; name: string; capacity: number; zone_name: string | null };
 
 export function RestaurantReservationForm({
   capacityMode,
   assignmentMode,
+  maxPartySize,
   zoneNames,
   onSaved,
 }: {
   capacityMode: "tables" | "zones";
   assignmentMode: "automatic" | "manual";
+  maxPartySize: number;
   zoneNames: string[];
   onSaved: () => void;
 }) {
@@ -67,21 +70,19 @@ export function RestaurantReservationForm({
     setSelectedSlot(null);
 
     const timeout = setTimeout(() => {
-      fetchAvailableSlots({ localDate, partySize, zonePreference: effectiveZonePreference }).then(
-        (result) => {
-          if (!cancelled) {
-            setSlots(result);
-            setLoadingSlots(false);
-          }
+      fetchAvailableSlots({ localDate, zonePreference: effectiveZonePreference }).then((result) => {
+        if (!cancelled) {
+          setSlots(result);
+          setLoadingSlots(false);
         }
-      );
+      });
     }, 300);
 
     return () => {
       cancelled = true;
       clearTimeout(timeout);
     };
-  }, [localDate, partySize, effectiveZonePreference]);
+  }, [localDate, effectiveZonePreference]);
 
   useEffect(() => {
     if (!selectedSlot || assignmentMode !== "manual") {
@@ -103,7 +104,8 @@ export function RestaurantReservationForm({
     }).then((result) => {
       if (!cancelled) {
         setFreeResources(result);
-        setSelectedResourceId(result[0]?.id ?? null);
+        const fitting = result.find((r) => r.capacity >= partySize);
+        setSelectedResourceId(fitting?.id ?? null);
         setLoadingResources(false);
       }
     });
@@ -113,6 +115,8 @@ export function RestaurantReservationForm({
     };
   }, [selectedSlot, assignmentMode, localDate, partySize, effectiveZonePreference, slots]);
 
+  const hasFittingResource = freeResources.some((r) => r.capacity >= partySize);
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
@@ -121,7 +125,11 @@ export function RestaurantReservationForm({
       setError("Elegí un horario disponible.");
       return;
     }
-    if (assignmentMode === "manual" && !selectedResourceId) {
+    if (partySize > maxPartySize) {
+      setError(`El máximo de comensales por reserva es ${maxPartySize}.`);
+      return;
+    }
+    if (assignmentMode === "manual" && hasFittingResource && !selectedResourceId) {
       setError("Elegí una mesa.");
       return;
     }
@@ -146,13 +154,11 @@ export function RestaurantReservationForm({
       // A lost race means the slot the customer picked is gone - refresh
       // availability instead of leaving a stale grid on screen.
       setLoadingSlots(true);
-      fetchAvailableSlots({ localDate, partySize, zonePreference: effectiveZonePreference }).then(
-        (result) => {
-          setSlots(result);
-          setSelectedSlot(null);
-          setLoadingSlots(false);
-        }
-      );
+      fetchAvailableSlots({ localDate, zonePreference: effectiveZonePreference }).then((result) => {
+        setSlots(result);
+        setSelectedSlot(null);
+        setLoadingSlots(false);
+      });
       return;
     }
 
@@ -189,6 +195,7 @@ export function RestaurantReservationForm({
             id="party_size"
             type="number"
             min={1}
+            max={maxPartySize}
             required
             value={partySize}
             onChange={(e) => setPartySize(Number(e.target.value) || 1)}
@@ -229,18 +236,32 @@ export function RestaurantReservationForm({
           ) : freeResources.length === 0 ? (
             <p className="text-sm text-muted-foreground">No hay mesas libres a ese horario.</p>
           ) : (
-            <Select value={selectedResourceId ?? undefined} onValueChange={setSelectedResourceId}>
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {freeResources.map((resource) => (
-                  <SelectItem key={resource.id} value={resource.id}>
-                    {resource.name} ({resource.capacity} pers.)
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <>
+              <Select
+                value={selectedResourceId ?? NO_TABLE}
+                onValueChange={(value) => setSelectedResourceId(value === NO_TABLE ? null : value)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {!hasFittingResource && (
+                    <SelectItem value={NO_TABLE}>Sin mesa asignada (asignar después)</SelectItem>
+                  )}
+                  {freeResources.map((resource) => (
+                    <SelectItem key={resource.id} value={resource.id}>
+                      {resource.name} ({resource.capacity} pers.)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {!hasFittingResource && (
+                <p className="text-xs text-muted-foreground">
+                  Ninguna mesa libre tiene capacidad para {partySize} comensales. Podés dejarla sin
+                  mesa y asignarla después (por ejemplo, combinando mesas).
+                </p>
+              )}
+            </>
           )}
         </div>
       )}

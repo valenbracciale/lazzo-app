@@ -11,33 +11,56 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2 } from "lucide-react";
+import { Loader2, Trash2, Upload } from "lucide-react";
 import { slugify } from "@/lib/utils";
-import { updatePublicBookingSettings } from "@/app/dashboard/settings/actions";
+import { createClient } from "@/lib/supabase/client";
+import { updateBusinessLogo, updatePublicBookingSettings } from "@/app/dashboard/settings/actions";
+
+const LOGO_BUCKET = "business-logos";
+const MAX_LOGO_BYTES = 2 * 1024 * 1024;
+const ALLOWED_LOGO_TYPES: Record<string, string> = {
+  "image/png": "png",
+  "image/svg+xml": "svg",
+};
+
+function logoStoragePathFromUrl(url: string): string | null {
+  const marker = `/${LOGO_BUCKET}/`;
+  const index = url.indexOf(marker);
+  if (index === -1) return null;
+  return url.slice(index + marker.length).split("?")[0];
+}
 
 export function PublicBookingSettings({
+  businessId,
   businessName,
   origin,
   initialSlug,
   initialEnabled,
   initialMinAdvanceMinutes,
   initialMaxAdvanceDays,
+  initialLogoUrl,
 }: {
+  businessId: string;
   businessName: string;
   origin: string;
   initialSlug: string;
   initialEnabled: boolean;
   initialMinAdvanceMinutes: number;
   initialMaxAdvanceDays: number;
+  initialLogoUrl: string | null;
 }) {
   const [slug, setSlug] = useState(initialSlug || slugify(businessName));
   const [enabled, setEnabled] = useState(initialEnabled);
   const [minAdvanceMinutes, setMinAdvanceMinutes] = useState(initialMinAdvanceMinutes);
   const [maxAdvanceDays, setMaxAdvanceDays] = useState(initialMaxAdvanceDays);
+  const [logoUrl, setLogoUrl] = useState(initialLogoUrl);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [logoError, setLogoError] = useState<string | null>(null);
 
   const publicUrl = `${origin}/reservar/${slug || "..."}`;
 
@@ -59,6 +82,70 @@ export function PublicBookingSettings({
       return;
     }
     setSaved(true);
+  }
+
+  async function handleLogoChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    setLogoError(null);
+    const ext = ALLOWED_LOGO_TYPES[file.type];
+    if (!ext) {
+      setLogoError("El logo tiene que ser un archivo PNG o SVG.");
+      return;
+    }
+    if (file.size > MAX_LOGO_BYTES) {
+      setLogoError("El logo no puede pesar más de 2 MB.");
+      return;
+    }
+
+    setUploadingLogo(true);
+    const supabase = createClient();
+    const path = `${businessId}/logo.${ext}`;
+    const { error: uploadError } = await supabase.storage
+      .from(LOGO_BUCKET)
+      .upload(path, file, { upsert: true, contentType: file.type });
+
+    if (uploadError) {
+      setUploadingLogo(false);
+      setLogoError("No pudimos subir el logo. Probá de nuevo.");
+      return;
+    }
+
+    const { data } = supabase.storage.from(LOGO_BUCKET).getPublicUrl(path);
+    // Cache-bust so re-uploading the same filename shows the new image right
+    // away instead of a stale cached copy at the same URL.
+    const bustedUrl = `${data.publicUrl}?v=${Date.now()}`;
+
+    const result = await updateBusinessLogo({ logoUrl: bustedUrl });
+    setUploadingLogo(false);
+    if (result.error) {
+      setLogoError(result.error);
+      return;
+    }
+    setLogoUrl(bustedUrl);
+  }
+
+  async function handleRemoveLogo() {
+    setUploadingLogo(true);
+    setLogoError(null);
+
+    if (logoUrl) {
+      const path = logoStoragePathFromUrl(logoUrl);
+      if (path) {
+        const supabase = createClient();
+        await supabase.storage.from(LOGO_BUCKET).remove([path]);
+      }
+    }
+
+    const result = await updateBusinessLogo({ logoUrl: null });
+    setUploadingLogo(false);
+    if (result.error) {
+      setLogoError(result.error);
+      return;
+    }
+    setLogoUrl(null);
   }
 
   return (
@@ -119,6 +206,61 @@ export function PublicBookingSettings({
               onChange={(e) => setMaxAdvanceDays(Number(e.target.value) || 1)}
             />
           </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="business_logo">Logo del negocio</Label>
+          <div className="flex items-center gap-3">
+            {logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={logoUrl}
+                alt="Logo del negocio"
+                className="size-14 rounded-md border border-border object-contain bg-background p-1"
+              />
+            ) : (
+              <div className="flex size-14 items-center justify-center rounded-md border border-dashed border-border text-xs text-muted-foreground">
+                Sin logo
+              </div>
+            )}
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center gap-2">
+                <Button type="button" variant="outline" size="sm" disabled={uploadingLogo} asChild>
+                  <label htmlFor="business_logo" className="cursor-pointer">
+                    {uploadingLogo ? <Loader2 className="animate-spin" /> : <Upload />}
+                    {logoUrl ? "Cambiar logo" : "Subir logo"}
+                  </label>
+                </Button>
+                {logoUrl && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={uploadingLogo}
+                    onClick={handleRemoveLogo}
+                  >
+                    <Trash2 /> Quitar
+                  </Button>
+                )}
+              </div>
+              <input
+                id="business_logo"
+                type="file"
+                accept=".png,.svg,image/png,image/svg+xml"
+                onChange={handleLogoChange}
+                disabled={uploadingLogo}
+                className="hidden"
+              />
+              <p className="text-xs text-muted-foreground">
+                PNG con fondo transparente o SVG, hasta 2 MB. Se muestra en tu página de reserva pública.
+              </p>
+            </div>
+          </div>
+          {logoError && (
+            <p role="alert" className="text-sm text-destructive">
+              {logoError}
+            </p>
+          )}
         </div>
 
         {error && (

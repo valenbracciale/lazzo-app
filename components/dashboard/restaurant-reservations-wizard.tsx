@@ -104,6 +104,9 @@ export function RestaurantReservationsWizard({
   const [assignmentMode, setAssignmentMode] = useState<AssignmentMode | null>(
     (initialFormData.assignmentMode as AssignmentMode | undefined) ?? null
   );
+  const [maxPartySize, setMaxPartySize] = useState<number>(
+    (initialFormData.maxPartySize as number | undefined) ?? 20
+  );
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -210,6 +213,10 @@ export function RestaurantReservationsWizard({
 
   function handleContinueStep4() {
     if (!assignmentMode) return;
+    if (!maxPartySize || maxPartySize <= 0) {
+      setError("El máximo de comensales debe ser mayor a 0.");
+      return;
+    }
     void persistAndAdvance(5, {
       capacityMode,
       tables,
@@ -217,6 +224,7 @@ export function RestaurantReservationsWizard({
       durations,
       shifts,
       assignmentMode,
+      maxPartySize,
     });
   }
 
@@ -240,6 +248,7 @@ export function RestaurantReservationsWizard({
       p_assignment_mode: assignmentMode,
       p_resources: resourcesPayload,
       p_shifts: shiftsPayload,
+      p_max_party_size: maxPartySize,
     });
 
     setSaving(false);
@@ -613,6 +622,21 @@ export function RestaurantReservationsWizard({
               </button>
             ))}
           </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="max_party_size">Máximo de comensales por reserva</Label>
+            <Input
+              id="max_party_size"
+              type="number"
+              min={1}
+              className="w-28"
+              value={maxPartySize}
+              onChange={(e) => setMaxPartySize(Number(e.target.value) || 1)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Ninguna reserva puede tener más comensales que este número, sin importar la
+              capacidad de las mesas.
+            </p>
+          </div>
           {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
           <DialogFooter>
             <Button variant="outline" onClick={() => setStep(3)} disabled={saving}>Volver</Button>
@@ -631,7 +655,8 @@ export function RestaurantReservationsWizard({
             <DialogDescription>
               {capacityMode === "tables" ? `${tables.length} mesas` : `${zones.length} zonas`} ·{" "}
               {shifts.length} turno{shifts.length === 1 ? "" : "s"} · asignación{" "}
-              {assignmentMode === "automatic" ? "automática" : "manual"}
+              {assignmentMode === "automatic" ? "automática" : "manual"} · máximo {maxPartySize}{" "}
+              comensales por reserva
             </DialogDescription>
           </DialogHeader>
           <p className="py-4 text-sm text-muted-foreground">

@@ -35,6 +35,7 @@ export default async function SettingsPage() {
     { data: mpConnection },
     setup,
     { data: publicBookingSettings },
+    { data: businessRow },
   ] = await Promise.all([
     supabase
       .from("business_members")
@@ -65,6 +66,7 @@ export default async function SettingsPage() {
           .eq("business_id", business.id)
           .maybeSingle()
       : Promise.resolve({ data: null }),
+    supabase.from("businesses").select("logo_url").eq("id", business.id).maybeSingle(),
   ]);
 
   const professionals = professionalsData ?? [];
@@ -119,12 +121,14 @@ export default async function SettingsPage() {
       )}
       {business.businessType && (
         <PublicBookingSettings
+          businessId={business.id}
           businessName={business.name}
           origin={origin}
           initialSlug={publicBookingSettings?.slug ?? ""}
           initialEnabled={publicBookingSettings?.enabled ?? false}
           initialMinAdvanceMinutes={publicBookingSettings?.min_advance_minutes ?? 60}
           initialMaxAdvanceDays={publicBookingSettings?.max_advance_days ?? 30}
+          initialLogoUrl={businessRow?.logo_url ?? null}
         />
       )}
       {business.businessType && <BusinessTypeDangerZone />}

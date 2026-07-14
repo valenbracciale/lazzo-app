@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { getCurrentBusiness } from "@/lib/business";
 import { createClient } from "@/lib/supabase/server";
 import { getSectionSetup } from "@/lib/section-setup.server";
@@ -7,6 +8,7 @@ import { ReservationsView } from "@/components/dashboard/reservations-view";
 import { RestaurantReservationsView } from "@/components/dashboard/restaurant-reservations-view";
 import { PeluqueriaReservationsView } from "@/components/dashboard/peluqueria-reservations-view";
 import { GimnasioReservationsView } from "@/components/dashboard/gimnasio-reservations-view";
+import { PublicBookingLinkButton } from "@/components/dashboard/public-booking-link-button";
 import { BusinessTypeGate } from "@/components/dashboard/business-type-gate";
 import { ReservationsSectionGate } from "@/components/dashboard/reservations-section-gate";
 import { SectionPendingNotice } from "@/components/dashboard/section-pending-notice";
@@ -38,6 +40,36 @@ export default async function ReservationsPage() {
     );
   }
 
+  let publicBookingButton: React.ReactNode = null;
+  if (business.role === "owner") {
+    const headersList = await headers();
+    const host = headersList.get("host");
+    const protocol = host?.startsWith("localhost") ? "http" : "https";
+    const origin = `${protocol}://${host}`;
+
+    const [{ data: publicBookingSettings }, { data: businessRow }] = await Promise.all([
+      supabase
+        .from("public_booking_settings")
+        .select("slug, enabled, min_advance_minutes, max_advance_days")
+        .eq("business_id", business.id)
+        .maybeSingle(),
+      supabase.from("businesses").select("logo_url").eq("id", business.id).maybeSingle(),
+    ]);
+
+    publicBookingButton = (
+      <PublicBookingLinkButton
+        businessId={business.id}
+        businessName={business.name}
+        origin={origin}
+        initialSlug={publicBookingSettings?.slug ?? ""}
+        initialEnabled={publicBookingSettings?.enabled ?? false}
+        initialMinAdvanceMinutes={publicBookingSettings?.min_advance_minutes ?? 60}
+        initialMaxAdvanceDays={publicBookingSettings?.max_advance_days ?? 30}
+        initialLogoUrl={businessRow?.logo_url ?? null}
+      />
+    );
+  }
+
   if (business.businessType === "restaurante_bar") {
     // Self-corrective no-show flagging (also runs in the background via
     // pg_cron every minute) - this catches it instantly on page load too.
@@ -56,19 +88,23 @@ export default async function ReservationsPage() {
         .eq("business_id", business.id),
       supabase
         .from("reservation_settings")
-        .select("capacity_mode, assignment_mode")
+        .select("capacity_mode, assignment_mode, max_party_size")
         .eq("business_id", business.id)
         .maybeSingle(),
     ]);
 
     return (
-      <RestaurantReservationsView
-        businessId={business.id}
-        resources={resources ?? []}
-        shifts={shifts ?? []}
-        capacityMode={settings?.capacity_mode ?? "tables"}
-        assignmentMode={settings?.assignment_mode ?? "automatic"}
-      />
+      <div className="space-y-4">
+        {publicBookingButton && <div className="flex justify-end">{publicBookingButton}</div>}
+        <RestaurantReservationsView
+          businessId={business.id}
+          resources={resources ?? []}
+          shifts={shifts ?? []}
+          capacityMode={settings?.capacity_mode ?? "tables"}
+          assignmentMode={settings?.assignment_mode ?? "automatic"}
+          maxPartySize={settings?.max_party_size ?? 20}
+        />
+      </div>
     );
   }
 
@@ -88,12 +124,15 @@ export default async function ReservationsPage() {
     ]);
 
     return (
-      <PeluqueriaReservationsView
-        businessId={business.id}
-        services={services ?? []}
-        professionals={professionals ?? []}
-        isOwner={business.role === "owner"}
-      />
+      <div className="space-y-4">
+        {publicBookingButton && <div className="flex justify-end">{publicBookingButton}</div>}
+        <PeluqueriaReservationsView
+          businessId={business.id}
+          services={services ?? []}
+          professionals={professionals ?? []}
+          isOwner={business.role === "owner"}
+        />
+      </div>
     );
   }
 
@@ -117,11 +156,14 @@ export default async function ReservationsPage() {
     ]);
 
     return (
-      <GimnasioReservationsView
-        businessId={business.id}
-        isOwner={business.role === "owner"}
-        ownInstructorId={ownInstructorId}
-      />
+      <div className="space-y-4">
+        {publicBookingButton && <div className="flex justify-end">{publicBookingButton}</div>}
+        <GimnasioReservationsView
+          businessId={business.id}
+          isOwner={business.role === "owner"}
+          ownInstructorId={ownInstructorId}
+        />
+      </div>
     );
   }
 

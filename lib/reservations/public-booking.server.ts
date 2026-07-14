@@ -7,6 +7,7 @@ export type PublicBusiness = {
   id: string;
   name: string;
   businessType: BusinessType;
+  logoUrl: string | null;
   minAdvanceMinutes: number;
   maxAdvanceDays: number;
 };
@@ -21,14 +22,14 @@ export async function resolvePublicBusiness(
   const { data } = await supabase
     .from("public_booking_settings")
     .select(
-      "min_advance_minutes, max_advance_days, businesses(id, name, business_type)"
+      "min_advance_minutes, max_advance_days, businesses(id, name, business_type, logo_url)"
     )
     .eq("slug", slug)
     .eq("enabled", true)
     .maybeSingle();
 
   const business = data?.businesses as unknown as
-    | { id: string; name: string; business_type: BusinessType | null }
+    | { id: string; name: string; business_type: BusinessType | null; logo_url: string | null }
     | null;
   if (!data || !business || !business.business_type) return null;
 
@@ -36,6 +37,7 @@ export async function resolvePublicBusiness(
     id: business.id,
     name: business.name,
     businessType: business.business_type,
+    logoUrl: business.logo_url,
     minAdvanceMinutes: data.min_advance_minutes,
     maxAdvanceDays: data.max_advance_days,
   };

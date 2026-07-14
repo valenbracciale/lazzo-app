@@ -23,7 +23,7 @@ export async function getRestaurantConfigSnapshot(
         .eq("business_id", businessId),
       supabase
         .from("reservation_settings")
-        .select("capacity_mode, assignment_mode")
+        .select("capacity_mode, assignment_mode, max_party_size")
         .eq("business_id", businessId)
         .maybeSingle(),
     ]);
@@ -74,6 +74,7 @@ export async function getRestaurantConfigSnapshot(
     assignmentMode: (settings?.assignment_mode ?? "automatic") as
       | "automatic"
       | "manual",
+    maxPartySize: settings?.max_party_size ?? 20,
   };
 }
 

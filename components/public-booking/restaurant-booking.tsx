@@ -22,20 +22,25 @@ import {
 import { BookingSuccess } from "@/components/public-booking/booking-success";
 
 const NO_ZONE = "__any__";
+const NO_TABLE = "__none__";
 
 type FreeResource = { id: string; name: string; capacity: number; zone_name: string | null };
 
 export function PublicRestaurantBooking({
   slug,
   businessName,
+  logoUrl,
   capacityMode,
   assignmentMode,
+  maxPartySize,
   zoneNames,
 }: {
   slug: string;
   businessName: string;
+  logoUrl: string | null;
   capacityMode: "tables" | "zones";
   assignmentMode: "automatic" | "manual";
+  maxPartySize: number;
   zoneNames: string[];
 }) {
   const [customerName, setCustomerName] = useState("");
@@ -69,7 +74,7 @@ export function PublicRestaurantBooking({
     setSelectedSlot(null);
 
     const timeout = setTimeout(() => {
-      fetchPublicRestaurantSlots({ slug, localDate, partySize, zonePreference: effectiveZonePreference }).then(
+      fetchPublicRestaurantSlots({ slug, localDate, zonePreference: effectiveZonePreference }).then(
         (result) => {
           if (!cancelled) {
             setSlots(result);
@@ -83,7 +88,7 @@ export function PublicRestaurantBooking({
       cancelled = true;
       clearTimeout(timeout);
     };
-  }, [slug, localDate, partySize, effectiveZonePreference]);
+  }, [slug, localDate, effectiveZonePreference]);
 
   useEffect(() => {
     if (!selectedSlot || assignmentMode !== "manual") {
@@ -106,7 +111,8 @@ export function PublicRestaurantBooking({
     }).then((result) => {
       if (!cancelled) {
         setFreeResources(result);
-        setSelectedResourceId(result[0]?.id ?? null);
+        const fitting = result.find((r) => r.capacity >= partySize);
+        setSelectedResourceId(fitting?.id ?? null);
         setLoadingResources(false);
       }
     });
@@ -116,6 +122,8 @@ export function PublicRestaurantBooking({
     };
   }, [slug, selectedSlot, assignmentMode, localDate, partySize, effectiveZonePreference, slots]);
 
+  const hasFittingResource = freeResources.some((r) => r.capacity >= partySize);
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
@@ -124,7 +132,11 @@ export function PublicRestaurantBooking({
       setError("Elegí un horario disponible.");
       return;
     }
-    if (assignmentMode === "manual" && !selectedResourceId) {
+    if (partySize > maxPartySize) {
+      setError(`El máximo de comensales por reserva es ${maxPartySize}.`);
+      return;
+    }
+    if (assignmentMode === "manual" && hasFittingResource && !selectedResourceId) {
       setError("Elegí una mesa.");
       return;
     }
@@ -149,13 +161,11 @@ export function PublicRestaurantBooking({
     if (result.error) {
       setError(result.error);
       setLoadingSlots(true);
-      fetchPublicRestaurantSlots({ slug, localDate, partySize, zonePreference: effectiveZonePreference }).then(
-        (r) => {
-          setSlots(r);
-          setSelectedSlot(null);
-          setLoadingSlots(false);
-        }
-      );
+      fetchPublicRestaurantSlots({ slug, localDate, zonePreference: effectiveZonePreference }).then((r) => {
+        setSlots(r);
+        setSelectedSlot(null);
+        setLoadingSlots(false);
+      });
       return;
     }
 
@@ -169,6 +179,10 @@ export function PublicRestaurantBooking({
   return (
     <div className="mx-auto max-w-lg space-y-6 px-4 py-10">
       <div className="space-y-1 text-center">
+        {logoUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={logoUrl} alt={businessName} className="mx-auto mb-2 h-16 w-auto object-contain" />
+        )}
         <p className="text-sm text-muted-foreground">Reservar en</p>
         <h1 className="text-2xl font-bold">{businessName}</h1>
       </div>
@@ -225,6 +239,7 @@ export function PublicRestaurantBooking({
               id="party_size"
               type="number"
               min={1}
+              max={maxPartySize}
               required
               value={partySize}
               onChange={(e) => setPartySize(Number(e.target.value) || 1)}
@@ -265,18 +280,32 @@ export function PublicRestaurantBooking({
             ) : freeResources.length === 0 ? (
               <p className="text-sm text-muted-foreground">No hay mesas libres a ese horario.</p>
             ) : (
-              <Select value={selectedResourceId ?? undefined} onValueChange={setSelectedResourceId}>
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {freeResources.map((resource) => (
-                    <SelectItem key={resource.id} value={resource.id}>
-                      {resource.name} ({resource.capacity} pers.)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <>
+                <Select
+                  value={selectedResourceId ?? NO_TABLE}
+                  onValueChange={(value) => setSelectedResourceId(value === NO_TABLE ? null : value)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {!hasFittingResource && (
+                      <SelectItem value={NO_TABLE}>Sin mesa asignada (nos encargamos después)</SelectItem>
+                    )}
+                    {freeResources.map((resource) => (
+                      <SelectItem key={resource.id} value={resource.id}>
+                        {resource.name} ({resource.capacity} pers.)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {!hasFittingResource && (
+                  <p className="text-xs text-muted-foreground">
+                    Ninguna mesa libre tiene capacidad para {partySize} comensales. Podés reservar
+                    igual: el negocio te asigna una mesa después.
+                  </p>
+                )}
+              </>
             )}
           </div>
         )}

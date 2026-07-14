@@ -66,7 +66,6 @@ function validateContact(input: ContactFields): string | null {
 export async function fetchPublicRestaurantSlots(input: {
   slug: string;
   localDate: string;
-  partySize: number;
   zonePreference: string | null;
 }): Promise<SlotAvailability[]> {
   const supabase = createAdminClient();
@@ -77,7 +76,6 @@ export async function fetchPublicRestaurantSlots(input: {
     supabase,
     businessId: business.id,
     localDate: input.localDate,
-    partySize: input.partySize,
     zonePreference: input.zonePreference,
   });
 
@@ -146,7 +144,11 @@ export async function createPublicRestaurantReservation(input: {
   if (cooldownError) return { error: cooldownError };
 
   const [{ data: settings }, freeResources] = await Promise.all([
-    supabase.from("reservation_settings").select("assignment_mode").eq("business_id", business.id).maybeSingle(),
+    supabase
+      .from("reservation_settings")
+      .select("assignment_mode, max_party_size")
+      .eq("business_id", business.id)
+      .maybeSingle(),
     listFreeResourcesAt({
       supabase,
       businessId: business.id,
@@ -156,20 +158,35 @@ export async function createPublicRestaurantReservation(input: {
     }),
   ]);
 
+  const maxPartySize = settings?.max_party_size ?? 20;
+  if (input.partySize > maxPartySize) {
+    return { error: `El máximo de comensales por reserva es ${maxPartySize}.` };
+  }
+
+  // No free resource at all means there's no room at this time - block. A
+  // party too big for every free table's capacity still goes through, just
+  // without a resource_id, for the business to assign a table manually later.
+  if (freeResources.length === 0) return { error: NO_SLOT_ERROR };
+
   const assignmentMode = settings?.assignment_mode ?? "automatic";
-  const resource =
-    assignmentMode === "manual"
-      ? freeResources.find((r) => r.id === input.resourceId)
-      : freeResources[0];
+  let resource;
+  if (assignmentMode === "manual") {
+    if (input.resourceId) {
+      resource = freeResources.find((r) => r.id === input.resourceId);
+      if (!resource) return { error: NO_SLOT_ERROR };
+    }
+  } else {
+    resource = freeResources.find((r) => r.capacity >= input.partySize);
+  }
 
-  if (!resource) return { error: NO_SLOT_ERROR };
-
-  const endsAt = new Date(new Date(startsAt).getTime() + resource.duration_minutes * 60_000).toISOString();
+  const durationMinutes =
+    resource?.duration_minutes ?? Math.max(...freeResources.map((r) => r.duration_minutes));
+  const endsAt = new Date(new Date(startsAt).getTime() + durationMinutes * 60_000).toISOString();
   const cancellationToken = crypto.randomUUID();
 
   const { error } = await supabase.from("reservations").insert({
     business_id: business.id,
-    resource_id: resource.id,
+    resource_id: resource?.id ?? null,
     customer_name: input.customerName,
     customer_phone: input.customerPhone,
     customer_email: input.customerEmail,

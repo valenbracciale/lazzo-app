@@ -36,7 +36,6 @@ const NO_SLOT_ERROR = "Ese horario ya no tiene lugar disponible. Elegí otro hor
 
 export async function fetchAvailableSlots(input: {
   localDate: string;
-  partySize: number;
   zonePreference: string | null;
   excludeReservationId?: string | null;
 }): Promise<SlotAvailability[]> {
@@ -47,7 +46,6 @@ export async function fetchAvailableSlots(input: {
     supabase,
     businessId: business.id,
     localDate: input.localDate,
-    partySize: input.partySize,
     zonePreference: input.zonePreference,
     excludeReservationId: input.excludeReservationId,
   });
@@ -91,9 +89,14 @@ export async function createRestaurantReservation(
 
   const { data: settings } = await supabase
     .from("reservation_settings")
-    .select("assignment_mode")
+    .select("assignment_mode, max_party_size")
     .eq("business_id", business.id)
     .maybeSingle();
+
+  const maxPartySize = settings?.max_party_size ?? 20;
+  if (input.partySize > maxPartySize) {
+    return { error: `El máximo de comensales por reserva es ${maxPartySize}.` };
+  }
 
   const assignmentMode = settings?.assignment_mode ?? "automatic";
 
@@ -105,24 +108,32 @@ export async function createRestaurantReservation(
     zonePreference: input.zonePreference,
   });
 
-  let resource;
-  if (assignmentMode === "manual") {
-    resource = freeResources.find((r) => r.id === input.resourceId);
-  } else {
-    resource = freeResources[0];
-  }
-
-  if (!resource) {
+  // No free resource at all (of any size) means there's truly no room at
+  // this time - block. But a party too big for every free table's capacity
+  // is not the same problem: the reservation still goes through, just
+  // without a resource_id, for the business to assign manually afterwards
+  // (e.g. by combining tables) via the "Asignar mesa" action.
+  if (freeResources.length === 0) {
     return { error: NO_SLOT_ERROR };
   }
 
-  const endsAt = new Date(
-    new Date(startsAt).getTime() + resource.duration_minutes * 60_000
-  ).toISOString();
+  let resource;
+  if (assignmentMode === "manual") {
+    if (input.resourceId) {
+      resource = freeResources.find((r) => r.id === input.resourceId);
+      if (!resource) return { error: NO_SLOT_ERROR };
+    }
+  } else {
+    resource = freeResources.find((r) => r.capacity >= input.partySize);
+  }
+
+  const durationMinutes =
+    resource?.duration_minutes ?? Math.max(...freeResources.map((r) => r.duration_minutes));
+  const endsAt = new Date(new Date(startsAt).getTime() + durationMinutes * 60_000).toISOString();
 
   const { error } = await supabase.from("reservations").insert({
     business_id: business.id,
-    resource_id: resource.id,
+    resource_id: resource?.id ?? null,
     customer_name: input.customerName,
     customer_phone: input.customerPhone,
     customer_email: input.customerEmail,
@@ -176,25 +187,31 @@ export async function rescheduleRestaurantReservation(input: {
     excludeReservationId: input.reservationId,
   });
 
-  let resource;
-  if (assignmentMode === "manual") {
-    resource = freeResources.find((r) => r.id === input.resourceId);
-  } else {
-    resource = freeResources[0];
-  }
-
-  if (!resource) {
+  // Same rule as createRestaurantReservation: no free resource at all blocks
+  // the move, but a party too big for every free table's capacity is allowed
+  // through without a resource_id instead.
+  if (freeResources.length === 0) {
     return { error: NO_SLOT_ERROR };
   }
 
-  const endsAt = new Date(
-    new Date(startsAt).getTime() + resource.duration_minutes * 60_000
-  ).toISOString();
+  let resource;
+  if (assignmentMode === "manual") {
+    if (input.resourceId) {
+      resource = freeResources.find((r) => r.id === input.resourceId);
+      if (!resource) return { error: NO_SLOT_ERROR };
+    }
+  } else {
+    resource = freeResources.find((r) => r.capacity >= input.partySize);
+  }
+
+  const durationMinutes =
+    resource?.duration_minutes ?? Math.max(...freeResources.map((r) => r.duration_minutes));
+  const endsAt = new Date(new Date(startsAt).getTime() + durationMinutes * 60_000).toISOString();
 
   const { error } = await supabase
     .from("reservations")
     .update({
-      resource_id: resource.id,
+      resource_id: resource?.id ?? null,
       starts_at: startsAt,
       ends_at: endsAt,
     })
